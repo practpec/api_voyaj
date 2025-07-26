@@ -6,6 +6,7 @@ from modules.trips.infrastructure.repositories.trip_member_mongo_repository impo
 from modules.days.infrastructure.repositories.day_mongo_repository import DayMongoRepository
 from modules.activities.infrastructure.repositories.activity_mongo_repository import ActivityMongoRepository
 from modules.diary_entries.infrastructure.repositories.diary_entry_mongo_repository import DiaryEntryMongoRepository
+from modules.expenses.infrastructure.repositories.expense_mongo_repository import ExpenseMongoRepository
 
 class RepositoryFactory:
     _instances: Dict[str, Any] = {}
@@ -51,6 +52,12 @@ class RepositoryFactory:
         if 'diary_entry' not in cls._instances:
             cls._instances['diary_entry'] = DiaryEntryMongoRepository()
         return cls._instances['diary_entry']
+    
+    @classmethod
+    def get_expense_repository(cls) -> ExpenseMongoRepository:
+        if 'expense' not in cls._instances:
+            cls._instances['expense'] = ExpenseMongoRepository()
+        return cls._instances['expense']
     
     @classmethod
     def clear_instances(cls):

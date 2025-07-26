@@ -6,6 +6,7 @@ from modules.friendships.domain.friendship_service import FriendshipService
 from modules.trips.domain.trip_service import TripService
 from modules.activities.domain.activity_service import ActivityService
 from modules.diary_entries.domain.diary_entry_service import DiaryEntryService
+from modules.expenses.domain.expense_service import ExpenseService
 from shared.repositories.RepositoryFactory import RepositoryFactory
 
 class ServiceFactory:
@@ -70,6 +71,13 @@ class ServiceFactory:
                 trip_member_repository=trip_member_repo
             )
         return cls._instances['diary_entry']
+    
+    @classmethod
+    def get_expense_service(cls) -> ExpenseService:
+        if 'expense' not in cls._instances:
+            expense_repo = RepositoryFactory.get_expense_repository()
+            cls._instances['expense'] = ExpenseService(expense_repo)
+        return cls._instances['expense']
     
     @classmethod
     def clear_instances(cls):

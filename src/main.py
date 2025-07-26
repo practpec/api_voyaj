@@ -9,13 +9,17 @@ from dotenv import load_dotenv
 # Agregar el directorio src al path
 sys.path.append(str(Path(__file__).parent))
 
-# Import modules
+# Import existing modules
 from modules.users.infrastructure.routes.UserRoutes import router as user_router
 from modules.friendships.infrastructure.routes.FriendshipRoutes import router as friendship_router
 from modules.trips.infrastructure.routes.trip_routes import router as trip_router
 from modules.days.infrastructure.routes.day_routes import router as day_router
 from modules.activities.infrastructure.routes.activity_routes import router as activity_router
 from modules.diary_entries.infrastructure.routes.diary_entry_routes import router as diary_router
+
+# Import new expenses module
+from modules.expenses.infrastructure.routes.expense_routes import router as expense_router
+
 from shared.database.Connection import DatabaseConnection
 from shared.routes.UploadRoutes import router as upload_router
 from shared.middleware.ErrorMiddleware import ErrorMiddleware
@@ -26,20 +30,21 @@ load_dotenv()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    print("Iniciando Voyaj API...")
+    print("[STARTUP] Iniciando Voyaj API...")
     try:
         db = DatabaseConnection()
         await db.connect()
-        print("Conexión a MongoDB establecida")
+        print("[STARTUP] Conexión a MongoDB establecida")
         yield
     except Exception as e:
-        print(f"Error al inicializar: {e}")
+        print(f"[ERROR] Error al inicializar: {e}")
         yield
     finally:
         # Shutdown
         try:
             db = DatabaseConnection()
             await db.disconnect()
+            print("[SHUTDOWN] Conexión a MongoDB cerrada")
         except:
             pass
 
@@ -74,6 +79,7 @@ app.include_router(trip_router, prefix="/api/trips", tags=["Viajes"])
 app.include_router(day_router, prefix="/api/days", tags=["Días"])
 app.include_router(activity_router, prefix="/api/activities", tags=["Actividades"])
 app.include_router(diary_router, prefix="/api/diary", tags=["Diario"])
+app.include_router(expense_router, prefix="/api/expenses", tags=["Gastos"])
 app.include_router(upload_router, tags=["Archivos"])
 
 # Health check endpoint
@@ -90,7 +96,16 @@ async def health_check():
             "message": "API funcionando correctamente",
             "database": "connected",
             "version": "1.0.0",
-            "environment": os.getenv("ENVIRONMENT", "development")
+            "environment": os.getenv("ENVIRONMENT", "development"),
+            "modules": {
+                "users": "active",
+                "friendships": "active", 
+                "trips": "active",
+                "days": "active",
+                "activities": "active",
+                "diary_entries": "active",
+                "expenses": "active"
+            }
         }
     except Exception as e:
         return {
@@ -118,7 +133,15 @@ async def root():
             "days": "/api/days",
             "activities": "/api/activities",
             "diary": "/api/diary",
+            "expenses": "/api/expenses",
             "uploads": "/api/upload"
+        },
+        "modules_status": {
+            "core": ["users", "trips", "days", "activities"],
+            "social": ["friendships"],
+            "content": ["diary_entries"],
+            "financial": ["expenses"],
+            "storage": ["uploads"]
         },
         "environment": os.getenv("ENVIRONMENT", "development")
     }
