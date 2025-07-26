@@ -1,4 +1,27 @@
-.env
+# .gitignore mejorado
+
+# Python cache (para TODOS los niveles)
+**/__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtualenv
 venv/
+
+# Archivos de entorno
+.env
+.env.*
+!.env.example
+
+# Archivos específicos
 create.py
 inicializar.md
+
+# IDEs
+.vscode/
+.idea/
+
+# Archivos temporales
+*.swp
+*.swo
+*.bak
