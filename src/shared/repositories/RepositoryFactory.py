@@ -1,3 +1,4 @@
+# src/shared/repositories/RepositoryFactory.py
 from typing import Dict, Any
 from modules.users.infrastructure.repositories.UserMongoRepository import UserMongoRepository
 from modules.friendships.infrastructure.repositories.friendship_mongo_repository import FriendshipMongoRepository
@@ -10,6 +11,7 @@ from modules.expenses.infrastructure.repositories.expense_mongo_repository impor
 from modules.expense_splits.infrastructure.repositories.expense_split_mongo_repository import ExpenseSplitMongoRepository
 from modules.photos.infrastructure.repositories.photo_mongo_repository import PhotoMongoRepository
 from modules.activity_votes.infrastructure.repositories.activity_vote_mongo_repository import ActivityVoteMongoRepository
+from modules.diary_recommendations.infrastructure.repositories.diary_recommendation_mongo_repository import DiaryRecommendationMongoRepository
 
 
 class RepositoryFactory:
@@ -82,5 +84,7 @@ class RepositoryFactory:
         return cls._instances['activity_vote']
     
     @classmethod
-    def clear_instances(cls):
-        cls._instances.clear()
+    def get_diary_recommendation_repository(cls) -> DiaryRecommendationMongoRepository:
+        if 'diary_recommendation' not in cls._instances:
+            cls._instances['diary_recommendation'] = DiaryRecommendationMongoRepository()
+        return cls._instances['diary_recommendation']

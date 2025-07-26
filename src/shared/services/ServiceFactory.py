@@ -119,9 +119,13 @@ class ServiceFactory:
             from modules.expense_splits.domain.expense_split_service import ExpenseSplitService
             
             expense_split_repo = RepositoryFactory.get_expense_split_repository()
+            expense_repo = RepositoryFactory.get_expense_repository()
+            trip_member_repo = RepositoryFactory.get_trip_member_repository()
             
             cls._instances['expense_split'] = ExpenseSplitService(
-                expense_split_repository=expense_split_repo
+                expense_split_repository=expense_split_repo,
+                expense_repository=expense_repo,
+                trip_member_repository=trip_member_repo
             )
         return cls._instances['expense_split']
     
@@ -158,5 +162,16 @@ class ServiceFactory:
         return cls._instances['activity_vote']
     
     @classmethod
-    def clear_instances(cls):
-        cls._instances.clear()
+    def get_diary_recommendation_service(cls):
+        """Obtener servicio de recomendaciones de diario"""
+        if 'diary_recommendation' not in cls._instances:
+            from modules.diary_recommendations.domain.diary_recommendation_service import DiaryRecommendationService
+            
+            recommendation_repo = RepositoryFactory.get_diary_recommendation_repository()
+            diary_entry_repo = RepositoryFactory.get_diary_entry_repository()
+            
+            cls._instances['diary_recommendation'] = DiaryRecommendationService(
+                recommendation_repository=recommendation_repo,
+                diary_entry_repository=diary_entry_repo
+            )
+        return cls._instances['diary_recommendation']

@@ -20,6 +20,7 @@ from modules.expenses.infrastructure.routes.expense_routes import router as expe
 from modules.expense_splits.infrastructure.routes.expense_split_routes import router as expense_split_routes
 from modules.photos.infrastructure.routes.photo_routes import router as photo_router
 from modules.activity_votes.infrastructure.routes.activity_vote_routes import router as activity_vote_routes
+from modules.diary_recommendations.infrastructure.routes.diary_recommendation_routes import router as diary_recommendation_router
 
 
 from shared.database.Connection import DatabaseConnection
@@ -85,6 +86,7 @@ app.include_router(expense_router, prefix="/api/expenses", tags=["Gastos"])
 app.include_router(expense_split_routes, prefix="/api/expenses-split", tags=["Gastos Compartidos"])
 app.include_router(photo_router, prefix="/api/photos", tags=["Fotos"])
 app.include_router(activity_vote_routes, prefix="/api/activity-votes", tags=["Votos de Actividades"])
+app.include_router(diary_recommendation_router, prefix="/api/diary-recommendations", tags=["Recomendaciones de Diario"])
 app.include_router(upload_router, tags=["Archivos"])
 
 # Health check endpoint
@@ -113,6 +115,7 @@ async def health_check():
                 "expense_splits": "active",
                 "photos": "active",
                 "activity_votes": "active",
+                "diary-recommentations": "active",
                 "uploads": "active"
             }
         }
@@ -146,12 +149,13 @@ async def root():
             "expenses_split": "/api/expenses-split",
             "photos": "/api/photos",
             "activity_votes": "/api/activity-votes",
+            "diary_recommendations": "/api/diary-recommendations",
             "uploads": "/api/upload"
         },
         "modules_status": {
             "core": ["users", "trips", "days", "activities","photos", "activity_votes"],
             "social": ["friendships"],
-            "content": ["diary_entries"],
+            "content": ["diary_entries", "diary_recommendations"],
             "financial": ["expenses", "expense_splits"],
             "storage": ["uploads"]
         },
