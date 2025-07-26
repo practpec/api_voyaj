@@ -1,6 +1,6 @@
 from fastapi import HTTPException, UploadFile, status
 from typing import List
-from ..services.UploadService import UploadService
+from ..services.ServiceFactory import ServiceFactory
 from ..dtos.UploadDTOs import (
     UploadResponseDTO, 
     MultipleUploadResponseDTO, 
@@ -11,51 +11,37 @@ from ..dtos.UploadDTOs import (
 from ..exceptions.UploadExceptions import (
     FileTooLargeException, 
     InvalidFileTypeException, 
-    UploadFailedException,
     CloudinaryException
 )
+from ..utils.response_utils import ResponseUtils
 
 class UploadController:
     def __init__(self):
-        self.upload_service = UploadService()
+        self.upload_service = ServiceFactory.get_upload_service()
 
     async def upload_profile_picture(self, file: UploadFile, current_user: dict) -> dict:
-        """Subir foto de perfil de usuario"""
         try:
-            result = await self.upload_service.upload_profile_picture(
-                file, 
-                current_user["sub"]
-            )
+            result = await self.upload_service.upload_profile_picture(file, current_user["sub"])
             
             response_dto = ProfilePictureUploadDTO(
                 url=result["url"],
                 public_id=result["public_id"]
             )
             
-            return {
-                "success": True,
-                "message": "Foto de perfil actualizada exitosamente",
-                "data": response_dto
-            }
+            return ResponseUtils.success(
+                data=response_dto,
+                message="Foto de perfil actualizada exitosamente"
+            ).__dict__
             
         except (FileTooLargeException, InvalidFileTypeException) as e:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=str(e)
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
         except CloudinaryException as e:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=str(e)
-            )
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
     async def upload_trip_photos(self, trip_id: str, files: List[UploadFile], current_user: dict) -> dict:
-        """Subir múltiples fotos de viaje"""
         try:
             results = await self.upload_service.upload_multiple_photos(
-                files, 
-                f"trips/{trip_id}/photos", 
-                current_user["sub"]
+                files, f"trips/{trip_id}/photos", current_user["sub"]
             )
             
             uploaded_files = [
@@ -73,31 +59,19 @@ class UploadController:
                 message=f"{len(uploaded_files)} fotos subidas exitosamente"
             )
             
-            return {
-                "success": True,
-                "message": f"{len(uploaded_files)} fotos subidas exitosamente",
-                "data": response_dto
-            }
+            return ResponseUtils.success(
+                data=response_dto,
+                message=f"{len(uploaded_files)} fotos subidas exitosamente"
+            ).__dict__
             
         except (FileTooLargeException, InvalidFileTypeException) as e:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=str(e)
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
         except CloudinaryException as e:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=str(e)
-            )
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
     async def upload_document(self, folder: str, file: UploadFile, current_user: dict) -> dict:
-        """Subir documento"""
         try:
-            result = await self.upload_service.upload_document(
-                file, 
-                folder, 
-                current_user["sub"]
-            )
+            result = await self.upload_service.upload_document(file, folder, current_user["sub"])
             
             response_dto = DocumentUploadDTO(
                 url=result["url"],
@@ -106,33 +80,25 @@ class UploadController:
                 file_type=file.content_type or "unknown"
             )
             
-            return {
-                "success": True,
-                "message": "Documento subido exitosamente",
-                "data": response_dto
-            }
+            return ResponseUtils.success(
+                data=response_dto,
+                message="Documento subido exitosamente"
+            ).__dict__
             
         except (FileTooLargeException, InvalidFileTypeException) as e:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=str(e)
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
         except CloudinaryException as e:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=str(e)
-            )
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
     async def delete_file(self, public_id: str, resource_type: str, current_user: dict) -> dict:
-        """Eliminar archivo"""
         try:
             success = await self.upload_service.delete_file(public_id, resource_type)
             
             if success:
-                return {
-                    "success": True,
-                    "message": "Archivo eliminado exitosamente"
-                }
+                return ResponseUtils.success(
+                    data=True,
+                    message="Archivo eliminado exitosamente"
+                ).__dict__
             else:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
