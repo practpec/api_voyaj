@@ -12,3 +12,5 @@ email-validator
 cloudinary
 jinja2
 certifi
+reportlab
+pandas

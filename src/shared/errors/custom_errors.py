@@ -161,3 +161,9 @@ class ErrorHandler:
                 "timestamp": datetime.utcnow().isoformat(),
                 "details": str(error)
             }
+        
+
+class ForbiddenError(Exception):
+    def __init__(self, message: str = "Acceso denegado"):
+        self.message = message
+        super().__init__(self.message)
