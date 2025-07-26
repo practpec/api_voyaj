@@ -1,5 +1,11 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query, Path
+from typing import Optional
 from ..controllers.trip_controller import TripController
+from ...application.dtos.trip_dto import (
+    CreateTripDTO, UpdateTripDTO, UpdateTripStatusDTO, TripFiltersDTO
+)
+from ...application.dtos.trip_member_dto import InviteMemberDTO, HandleInvitationDTO
+from shared.middleware.AuthMiddleware import get_current_user
 from shared.repositories.RepositoryFactory import RepositoryFactory
 from shared.services.ServiceFactory import ServiceFactory
 from shared.events.event_bus import EventBus
@@ -17,7 +23,7 @@ from ...application.use_cases.leave_trip import LeaveTripUseCase
 from ...application.use_cases.remove_trip_member import RemoveTripMemberUseCase
 from ...application.use_cases.update_member_role import UpdateMemberRoleUseCase
 
-router = APIRouter()
+router = APIRouter(prefix="/api/trips", tags=["trips"])
 
 def get_trip_controller():
     trip_repo = RepositoryFactory.get_trip_repository()
@@ -65,7 +71,102 @@ def get_trip_controller():
         )
     )
 
-def setup_routes():
-    controller = get_trip_controller()
-    router.include_router(controller.router)
-    return router
+@router.get("/")
+async def get_user_trips(
+    status: Optional[str] = Query(None),
+    category: Optional[str] = Query(None),
+    is_group_trip: Optional[bool] = Query(None),
+    destination: Optional[str] = Query(None),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    current_user: dict = Depends(get_current_user),
+    controller: TripController = Depends(get_trip_controller)
+):
+    return await controller.get_user_trips(current_user, status, category, is_group_trip, destination, limit, offset)
+
+@router.post("/")
+async def create_trip(
+    dto: CreateTripDTO,
+    current_user: dict = Depends(get_current_user),
+    controller: TripController = Depends(get_trip_controller)
+):
+    return await controller.create_trip(dto, current_user)
+
+@router.get("/{trip_id}")
+async def get_trip(
+    trip_id: str = Path(...),
+    current_user: dict = Depends(get_current_user),
+    controller: TripController = Depends(get_trip_controller)
+):
+    return await controller.get_trip(trip_id, current_user)
+
+@router.put("/{trip_id}")
+async def update_trip(
+    trip_id: str = Path(...),
+    dto: UpdateTripDTO = None,
+    current_user: dict = Depends(get_current_user),
+    controller: TripController = Depends(get_trip_controller)
+):
+    return await controller.update_trip(trip_id, dto, current_user)
+
+@router.delete("/{trip_id}")
+async def delete_trip(
+    trip_id: str = Path(...),
+    current_user: dict = Depends(get_current_user),
+    controller: TripController = Depends(get_trip_controller)
+):
+    return await controller.delete_trip(trip_id, current_user)
+
+@router.put("/{trip_id}/status")
+async def update_trip_status(
+    trip_id: str = Path(...),
+    dto: UpdateTripStatusDTO = None,
+    current_user: dict = Depends(get_current_user),
+    controller: TripController = Depends(get_trip_controller)
+):
+    return await controller.update_trip_status(trip_id, dto, current_user)
+
+@router.get("/{trip_id}/members")
+async def get_trip_members(
+    trip_id: str = Path(...),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    current_user: dict = Depends(get_current_user),
+    controller: TripController = Depends(get_trip_controller)
+):
+    return await controller.get_trip_members(trip_id, current_user, limit, offset)
+
+@router.post("/{trip_id}/members")
+async def invite_member(
+    trip_id: str = Path(...),
+    dto: InviteMemberDTO = None,
+    current_user: dict = Depends(get_current_user),
+    controller: TripController = Depends(get_trip_controller)
+):
+    return await controller.invite_member(trip_id, dto, current_user)
+
+@router.post("/{trip_id}/members/{member_id}/accept")
+async def accept_invitation(
+    trip_id: str = Path(...),
+    member_id: str = Path(...),
+    current_user: dict = Depends(get_current_user),
+    controller: TripController = Depends(get_trip_controller)
+):
+    return await controller.accept_invitation(trip_id, member_id, current_user)
+
+@router.post("/{trip_id}/members/{member_id}/reject")
+async def reject_invitation(
+    trip_id: str = Path(...),
+    member_id: str = Path(...),
+    current_user: dict = Depends(get_current_user),
+    controller: TripController = Depends(get_trip_controller)
+):
+    return await controller.reject_invitation(trip_id, member_id, current_user)
+
+@router.post("/{trip_id}/leave")
+async def leave_trip(
+    trip_id: str = Path(...),
+    current_user: dict = Depends(get_current_user),
+    controller: TripController = Depends(get_trip_controller)
+):
+    return await controller.leave_trip(trip_id, current_user)
