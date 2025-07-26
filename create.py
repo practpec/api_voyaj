@@ -6,54 +6,45 @@ def create_file(path, content=""):
     with open(path, 'w') as f:
         f.write(content)
 
-def create_project_structure():
-    # Main file
-    create_file("src/main.py", '"""Punto de entrada de la aplicación"""\n\nprint("Hello World!")')
+def create_friendships_module():
+    base_path = "src/modules/friendships"
     
-    # Users module
-    create_file("src/modules/users/domain/User.py", '"""Entidad de usuario"""\n\nclass User:\n    pass')
-    create_file("src/modules/users/domain/interfaces/IUserRepository.py", '"""Interfaz para el repositorio de usuarios"""\n\nclass IUserRepository:\n    pass')
-    
+    # Domain layer
+    create_file(f"{base_path}/__init__.py")
+    create_file(f"{base_path}/domain/__init__.py")
+    create_file(f"{base_path}/domain/friendship.py", '"""Entidad Friendship"""\n\nclass Friendship:\n    pass')
+    create_file(f"{base_path}/domain/friendship_events.py", '"""Eventos de dominio para friendships"""')
+    create_file(f"{base_path}/domain/friendship_service.py", '"""Servicio de dominio para friendships"""')
+    create_file(f"{base_path}/domain/interfaces/__init__.py")
+    create_file(f"{base_path}/domain/interfaces/friendship_repository.py", '"""Interfaz del repositorio para friendships"""\n\nclass IFriendshipRepository:\n    pass')
+
     # Application layer
-    create_file("src/modules/users/application/dtos/UserDTOs.py", '"""DTOs para el módulo de usuarios"""')
-    create_file("src/modules/users/application/useCases/CreateUser.py", '"""Caso de uso para crear usuario"""')
-    create_file("src/modules/users/application/useCases/LoginUser.py", '"""Caso de uso para login de usuario"""')
-    create_file("src/modules/users/application/useCases/UpdateProfile.py", '"""Caso de uso para actualizar perfil"""')
-    create_file("src/modules/users/application/useCases/VerifyEmail.py", '"""Caso de uso para verificar email"""')
-    create_file("src/modules/users/application/useCases/ResendVerification.py", '"""Caso de uso para reenviar verificación"""')
-    create_file("src/modules/users/application/useCases/RequestPasswordReset.py", '"""Caso de uso para solicitar reset de contraseña"""')
-    create_file("src/modules/users/application/useCases/ResetPassword.py", '"""Caso de uso para resetear contraseña"""')
-    
+    create_file(f"{base_path}/application/__init__.py")
+    create_file(f"{base_path}/application/dtos/__init__.py")
+    create_file(f"{base_path}/application/dtos/friendship_dto.py", '"""DTOs para friendships"""')
+    create_file(f"{base_path}/application/use_cases/__init__.py")
+    create_file(f"{base_path}/application/use_cases/send_friend_request.py", '"""Caso de uso: enviar solicitud de amistad"""')
+    create_file(f"{base_path}/application/use_cases/accept_friend_request.py", '"""Caso de uso: aceptar solicitud de amistad"""')
+    create_file(f"{base_path}/application/use_cases/reject_friend_request.py", '"""Caso de uso: rechazar solicitud de amistad"""')
+    create_file(f"{base_path}/application/use_cases/remove_friendship.py", '"""Caso de uso: eliminar amistad"""')
+    create_file(f"{base_path}/application/use_cases/get_friends.py", '"""Caso de uso: obtener lista de amigos"""')
+    create_file(f"{base_path}/application/use_cases/get_friend_requests.py", '"""Caso de uso: obtener solicitudes pendientes"""')
+    create_file(f"{base_path}/application/use_cases/get_friend_suggestions.py", '"""Caso de uso: obtener sugerencias de amigos"""')
+    create_file(f"{base_path}/application/use_cases/get_friendship_stats.py", '"""Caso de uso: obtener estadísticas de amistad"""')
+
     # Infrastructure layer
-    create_file("src/modules/users/infrastructure/controllers/UserController.py", '"""Controlador para usuarios"""')
-    create_file("src/modules/users/infrastructure/repositories/UserMongoRepository.py", '"""Implementación concreta del repositorio para MongoDB"""')
-    create_file("src/modules/users/infrastructure/routes/UserRoutes.py", '"""Rutas para el módulo de usuarios"""')
-    
-    # Shared components
-    create_file("src/shared/database/Connection.py", '"""Conexión a base de datos"""')
-    create_file("src/shared/services/AuthService.py", '"""Servicio de autenticación JWT"""')
-    create_file("src/shared/services/EmailService.py", '"""Servicio de emails (SendGrid)"""')
-    create_file("src/shared/services/UploadService.py", '"""Servicio de subida de archivos"""')
-    create_file("src/shared/middleware/AuthMiddleware.py", '"""Middleware de autenticación"""')
-    
-    # Exceptions
-    create_file("src/shared/exceptions/UserExceptions.py", '"""Excepciones relacionadas con usuarios"""')
-    create_file("src/shared/exceptions/AuthExceptions.py", '"""Excepciones relacionadas con autenticación"""')
-    create_file("src/shared/exceptions/EmailExceptions.py", '"""Excepciones relacionadas con emails"""')
-    create_file("src/shared/exceptions/UploadExceptions.py", '"""Excepciones relacionadas con subida de archivos"""')
-    
-    # Email templates
-    create_file("src/shared/templates/emails/welcome.html", '<!-- Template para email de bienvenida -->')
-    create_file("src/shared/templates/emails/verification.html", '<!-- Template para email de verificación -->')
-    create_file("src/shared/templates/emails/password_reset.html", '<!-- Template para email de reset de contraseña -->')
-    create_file("src/shared/templates/emails/password_changed.html", '<!-- Template para email de contraseña cambiada -->')
-    create_file("src/shared/templates/emails/account_deleted.html", '<!-- Template para email de cuenta eliminada -->')
-    
-    # Shared DTOs, controllers and routes
-    create_file("src/shared/dtos/UploadDTOs.py", '"""DTOs para subida de archivos"""')
-    create_file("src/shared/controllers/UploadController.py", '"""Controlador para subida de archivos"""')
-    create_file("src/shared/routes/UploadRoutes.py", '"""Rutas para subida de archivos"""')
+    create_file(f"{base_path}/infrastructure/__init__.py")
+    create_file(f"{base_path}/infrastructure/controllers/__init__.py")
+    create_file(f"{base_path}/infrastructure/controllers/friendship_controller.py", '"""Controlador HTTP para friendships"""')
+    create_file(f"{base_path}/infrastructure/repositories/__init__.py")
+    create_file(f"{base_path}/infrastructure/repositories/friendship_mongo_repository.py", '"""Implementación MongoDB para el repositorio"""')
+    create_file(f"{base_path}/infrastructure/events/__init__.py")
+    create_file(f"{base_path}/infrastructure/events/friendship_notification_handler.py", '"""Manejador de eventos para notificaciones de amistad"""')
 
 if __name__ == "__main__":
-    create_project_structure()
-    print("Estructura de proyecto creada exitosamente!")
+    # Crear desde fuera del directorio src
+    if not os.path.exists("src"):
+        os.makedirs("src")
+    
+    create_friendships_module()
+    print("✅ Módulo friendships creado exitosamente con todos los archivos y __init__.py")
