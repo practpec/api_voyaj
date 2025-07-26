@@ -2,13 +2,13 @@ from fastapi import HTTPException, status
 from typing import Dict, Any, Optional
 from datetime import datetime
 from decimal import Decimal
-from ..application.use_cases.create_expense import CreateExpense
-from ..application.use_cases.update_expense import UpdateExpense
-from ..application.use_cases.delete_expense import DeleteExpense
-from ..application.use_cases.get_expense import GetExpense
-from ..application.use_cases.get_trip_expenses import GetTripExpenses
-from ..application.dtos.create_expense_dto import CreateExpenseDTO
-from ..application.dtos.update_expense_dto import UpdateExpenseDTO
+from ...application.use_cases.create_expense import CreateExpense
+from ...application.use_cases.update_expense import UpdateExpense
+from ...application.use_cases.delete_expense import DeleteExpense
+from ...application.use_cases.get_expense import GetExpense
+from ...application.use_cases.get_trip_expenses import GetTripExpenses
+from ...application.dtos.create_expense_dto import CreateExpenseDTO
+from ...application.dtos.update_expense_dto import UpdateExpenseDTO
 from shared.errors.custom_errors import ValidationError, NotFoundError, AuthorizationError
 
 
@@ -153,7 +153,7 @@ class ExpenseController:
     async def get_available_categories(self) -> Dict[str, Any]:
         """Obtener categorías disponibles para gastos"""
         try:
-            from ..domain.expense import ExpenseCategory
+            from ...domain.expense import ExpenseCategory
             
             categories = []
             for category in ExpenseCategory:

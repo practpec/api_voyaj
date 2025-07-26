@@ -5,6 +5,17 @@ from typing import Any, Optional, Dict
 
 
 @dataclass
+class BaseEvent(ABC):
+    """Clase base simple para eventos"""
+    event_type: str
+    occurred_at: datetime
+    
+    def __init__(self):
+        self.occurred_at = datetime.utcnow()
+        self.event_type = ""
+
+
+@dataclass
 class DomainEvent(ABC):
     """Clase base para todos los eventos de dominio"""
     event_type: str
@@ -42,3 +53,14 @@ class FriendshipEvent(DomainEvent):
     def __post_init__(self):
         super().__post_init__()
         self.aggregate_type = 'Friendship'
+
+
+class BaseEventHandler(ABC):
+    """Clase base para manejadores de eventos"""
+    
+    async def _send_notification(self, notification_data: Dict[str, Any]) -> None:
+        """Enviar notificación a usuarios relevantes"""
+        try:
+            print(f"[NOTIFICATION] {notification_data}")
+        except Exception as e:
+            print(f"[ERROR] Error enviando notificación: {str(e)}")
