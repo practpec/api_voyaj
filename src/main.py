@@ -18,6 +18,8 @@ from modules.activities.infrastructure.routes.activity_routes import router as a
 from modules.diary_entries.infrastructure.routes.diary_entry_routes import router as diary_router
 from modules.expenses.infrastructure.routes.expense_routes import router as expense_router
 from modules.expense_splits.infrastructure.routes.expense_split_routes import router as expense_split_routes
+from modules.photos.infrastructure.routes.photo_routes import router as photo_router
+
 
 from shared.database.Connection import DatabaseConnection
 from shared.routes.UploadRoutes import router as upload_router
@@ -80,6 +82,7 @@ app.include_router(activity_router, prefix="/api/activities", tags=["Actividades
 app.include_router(diary_router, prefix="/api/diary", tags=["Diario"])
 app.include_router(expense_router, prefix="/api/expenses", tags=["Gastos"])
 app.include_router(expense_split_routes, prefix="/api/expenses-split", tags=["Gastos Compartidos"])
+app.include_router(photo_router, prefix="/api/photos", tags=["Fotos"])
 app.include_router(upload_router, tags=["Archivos"])
 
 # Health check endpoint
@@ -104,7 +107,10 @@ async def health_check():
                 "days": "active",
                 "activities": "active",
                 "diary_entries": "active",
-                "expenses": "active"
+                "expenses": "active",
+                "expense_splits": "active",
+                "photos": "active",
+                "uploads": "active"
             }
         }
     except Exception as e:
@@ -134,13 +140,15 @@ async def root():
             "activities": "/api/activities",
             "diary": "/api/diary",
             "expenses": "/api/expenses",
+            "expenses_split": "/api/expenses-split",
+            "photos": "/api/photos",
             "uploads": "/api/upload"
         },
         "modules_status": {
-            "core": ["users", "trips", "days", "activities"],
+            "core": ["users", "trips", "days", "activities","photos"],
             "social": ["friendships"],
             "content": ["diary_entries"],
-            "financial": ["expenses"],
+            "financial": ["expenses", "expense_splits"],
             "storage": ["uploads"]
         },
         "environment": os.getenv("ENVIRONMENT", "development")

@@ -8,6 +8,7 @@ from modules.activities.infrastructure.repositories.activity_mongo_repository im
 from modules.diary_entries.infrastructure.repositories.diary_entry_mongo_repository import DiaryEntryMongoRepository
 from modules.expenses.infrastructure.repositories.expense_mongo_repository import ExpenseMongoRepository
 from modules.expense_splits.infrastructure.repositories.expense_split_mongo_repository import ExpenseSplitMongoRepository
+from modules.photos.infrastructure.repositories.photo_mongo_repository import PhotoMongoRepository
 
 
 class RepositoryFactory:
@@ -66,6 +67,12 @@ class RepositoryFactory:
         if 'expense_split' not in cls._instances:
             cls._instances['expense_split'] = ExpenseSplitMongoRepository()
         return cls._instances['expense_split']
+    
+    @classmethod
+    def get_photo_repository(cls) -> PhotoMongoRepository:
+        if 'photo' not in cls._instances:
+            cls._instances['photo'] = PhotoMongoRepository()
+        return cls._instances['photo']
     
     @classmethod
     def clear_instances(cls):

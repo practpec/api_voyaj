@@ -126,5 +126,20 @@ class ServiceFactory:
         return cls._instances['expense_split']
     
     @classmethod
+    def get_photo_service(cls):
+        """Obtener servicio de fotos"""
+        if 'photo' not in cls._instances:
+            from modules.photos.domain.photo_service import PhotoService
+            
+            photo_repo = RepositoryFactory.get_photo_repository()
+            trip_member_repo = RepositoryFactory.get_trip_member_repository()
+            
+            cls._instances['photo'] = PhotoService(
+                photo_repository=photo_repo,
+                trip_member_repository=trip_member_repo
+            )
+        return cls._instances['photo']
+    
+    @classmethod
     def clear_instances(cls):
         cls._instances.clear()
