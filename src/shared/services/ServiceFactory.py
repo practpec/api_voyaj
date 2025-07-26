@@ -2,12 +2,8 @@ from typing import Dict, Any
 from .AuthService import AuthService
 from .EmailService import EmailService
 from .UploadService import UploadService
-from modules.friendships.domain.friendship_service import FriendshipService
-from modules.trips.domain.trip_service import TripService
-from modules.activities.domain.activity_service import ActivityService
-from modules.diary_entries.domain.diary_entry_service import DiaryEntryService
-from modules.expenses.domain.expense_service import ExpenseService
 from shared.repositories.RepositoryFactory import RepositoryFactory
+
 
 class ServiceFactory:
     _instances: Dict[str, Any] = {}
@@ -31,27 +27,47 @@ class ServiceFactory:
         return cls._instances['upload']
     
     @classmethod
-    def get_friendship_service(cls) -> FriendshipService:
+    def get_friendship_service(cls):
+        """Obtener servicio de amistades"""
         if 'friendship' not in cls._instances:
+            from modules.friendships.domain.friendship_service import FriendshipService
+            
             friendship_repo = RepositoryFactory.get_friendship_repository()
-            cls._instances['friendship'] = FriendshipService(friendship_repo)
+            user_repo = RepositoryFactory.get_user_repository()
+            
+            cls._instances['friendship'] = FriendshipService(
+                friendship_repository=friendship_repo,
+                user_repository=user_repo
+            )
         return cls._instances['friendship']
     
     @classmethod
-    def get_trip_service(cls) -> TripService:
+    def get_trip_service(cls):
+        """Obtener servicio de viajes"""
         if 'trip' not in cls._instances:
+            from modules.trips.domain.trip_service import TripService
+            
             trip_repo = RepositoryFactory.get_trip_repository()
             trip_member_repo = RepositoryFactory.get_trip_member_repository()
             user_repo = RepositoryFactory.get_user_repository()
-            cls._instances['trip'] = TripService(trip_repo, trip_member_repo, user_repo)
+            
+            cls._instances['trip'] = TripService(
+                trip_repository=trip_repo,
+                trip_member_repository=trip_member_repo,
+                user_repository=user_repo
+            )
         return cls._instances['trip']
     
     @classmethod
-    def get_activity_service(cls) -> ActivityService:
+    def get_activity_service(cls):
+        """Obtener servicio de actividades"""
         if 'activity' not in cls._instances:
+            from modules.activities.domain.activity_service import ActivityService
+            
             activity_repo = RepositoryFactory.get_activity_repository()
             day_repo = RepositoryFactory.get_day_repository()
             trip_member_repo = RepositoryFactory.get_trip_member_repository()
+            
             cls._instances['activity'] = ActivityService(
                 activity_repository=activity_repo,
                 day_repository=day_repo,
@@ -60,11 +76,15 @@ class ServiceFactory:
         return cls._instances['activity']
     
     @classmethod
-    def get_diary_entry_service(cls) -> DiaryEntryService:
+    def get_diary_entry_service(cls):
+        """Obtener servicio de entradas de diario"""
         if 'diary_entry' not in cls._instances:
+            from modules.diary_entries.domain.diary_entry_service import DiaryEntryService
+            
             diary_entry_repo = RepositoryFactory.get_diary_entry_repository()
             day_repo = RepositoryFactory.get_day_repository()
             trip_member_repo = RepositoryFactory.get_trip_member_repository()
+            
             cls._instances['diary_entry'] = DiaryEntryService(
                 diary_entry_repository=diary_entry_repo,
                 day_repository=day_repo,
@@ -73,10 +93,22 @@ class ServiceFactory:
         return cls._instances['diary_entry']
     
     @classmethod
-    def get_expense_service(cls) -> ExpenseService:
+    def get_expense_service(cls):
+        """Obtener servicio de gastos"""
         if 'expense' not in cls._instances:
+            from modules.expenses.domain.expense_service import ExpenseService
+            
             expense_repo = RepositoryFactory.get_expense_repository()
-            cls._instances['expense'] = ExpenseService(expense_repo)
+            trip_member_repo = RepositoryFactory.get_trip_member_repository()
+            user_repo = RepositoryFactory.get_user_repository()
+            trip_repo = RepositoryFactory.get_trip_repository()
+            
+            cls._instances['expense'] = ExpenseService(
+                expense_repository=expense_repo,
+                trip_member_repository=trip_member_repo,
+                user_repository=user_repo,
+                trip_repository=trip_repo
+            )
         return cls._instances['expense']
     
     @classmethod

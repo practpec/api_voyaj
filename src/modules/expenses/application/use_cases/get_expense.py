@@ -1,50 +1,41 @@
-from typing import Dict, Any, Optional
+from ..dtos.expense_dto import ExpenseResponseDTO, ExpenseDTOMapper
+from ...domain.expense_service import ExpenseService
 from ...domain.interfaces.expense_repository_interface import ExpenseRepositoryInterface
-from shared.errors.custom_errors import NotFoundError
+from modules.users.domain.interfaces.IUserRepository import IUserRepository
+from shared.errors.custom_errors import NotFoundError, ForbiddenError
 
 
-class GetExpense:
-    def __init__(self, expense_repository: ExpenseRepositoryInterface):
+class GetExpenseUseCase:
+    def __init__(
+        self,
+        expense_repository: ExpenseRepositoryInterface,
+        expense_service: ExpenseService,
+        user_repository: IUserRepository
+    ):
         self._expense_repository = expense_repository
+        self._expense_service = expense_service
+        self._user_repository = user_repository
 
-    async def execute(self, expense_id: str, user_id: str) -> Dict[str, Any]:
-        """Obtener detalles de un gasto específico"""
+    async def execute(self, expense_id: str, user_id: str) -> ExpenseResponseDTO:
+        """Obtener gasto específico por ID"""
         
-        # Buscar gasto
         expense = await self._expense_repository.find_by_id(expense_id)
-        if not expense:
+        if not expense or not expense.is_active():
             raise NotFoundError("Gasto no encontrado")
 
-        # Verificar que esté activo
-        if not expense.is_active():
-            raise NotFoundError("Gasto no encontrado")
+        # Verificar acceso del usuario
+        can_access = await self._expense_service.can_user_access_expense(expense, user_id)
+        if not can_access:
+            raise ForbiddenError("No tienes acceso a este gasto")
 
-        # Convertir a formato de respuesta
-        return {
-            "success": True,
-            "data": {
-                "id": expense.id,
-                "trip_id": expense.trip_id,
-                "user_id": expense._data.user_id,
-                "activity_id": expense._data.activity_id,
-                "diary_entry_id": expense._data.diary_entry_id,
-                "amount": float(expense.amount),
-                "currency": expense.currency,
-                "category": {
-                    "value": expense.category.value,
-                    "display": expense.get_category_display()
-                },
-                "description": expense._data.description,
-                "receipt_url": expense._data.receipt_url,
-                "location": expense._data.location,
-                "expense_date": expense._data.expense_date.isoformat(),
-                "is_shared": expense.is_shared,
-                "paid_by_user_id": expense._data.paid_by_user_id,
-                "status": expense.status.value,
-                "metadata": expense._data.metadata,
-                "created_at": expense._data.created_at.isoformat(),
-                "updated_at": expense._data.updated_at.isoformat(),
-                "can_edit": expense.can_be_edited_by(user_id),
-                "can_split": expense.can_be_split()
-            }
-        }
+        # Determinar permisos del usuario
+        can_edit = expense.user_id == user_id
+        can_delete = expense.user_id == user_id
+        can_change_status = can_edit
+
+        return ExpenseDTOMapper.to_expense_response(
+            expense.to_public_data(),
+            can_edit=can_edit,
+            can_delete=can_delete,
+            can_change_status=can_change_status
+        )

@@ -1,121 +1,143 @@
-from fastapi import APIRouter, Depends, Query, Path, Body
-from typing import Dict, Any, Optional
+from fastapi import APIRouter, Depends, Query, Path
+from typing import Optional
 from ..controllers.expense_controller import ExpenseController
-from ...application.dtos.create_expense_dto import CreateExpenseDTO
-from ...application.dtos.update_expense_dto import UpdateExpenseDTO
+from ...application.dtos.expense_dto import CreateExpenseDTO, UpdateExpenseDTO, ChangeExpenseStatusDTO
 from shared.middleware.AuthMiddleware import get_current_user
 from shared.repositories.RepositoryFactory import RepositoryFactory
-from shared.services.ServiceFactory import ServiceFactory
-from shared.events.event_bus import EventBus
 
-from ...application.use_cases.create_expense import CreateExpense
-from ...application.use_cases.update_expense import UpdateExpense
-from ...application.use_cases.delete_expense import DeleteExpense
-from ...application.use_cases.get_expense import GetExpense
-from ...application.use_cases.get_trip_expenses import GetTripExpenses
+from ...application.use_cases.create_expense import CreateExpenseUseCase
+from ...application.use_cases.get_expense import GetExpenseUseCase
+from ...application.use_cases.get_trip_expenses import GetTripExpensesUseCase
+from ...application.use_cases.update_expense import UpdateExpenseUseCase
+from ...application.use_cases.change_expense_status import ChangeExpenseStatusUseCase
+from ...application.use_cases.delete_expense import DeleteExpenseUseCase
+from ...application.use_cases.get_expense_summary import GetExpenseSummaryUseCase
+from ...domain.expense_service import ExpenseService
 
 router = APIRouter()
 
 def get_expense_controller():
     expense_repo = RepositoryFactory.get_expense_repository()
-    expense_service = ServiceFactory.get_expense_service()
-    event_bus = EventBus.get_instance()
+    trip_member_repo = RepositoryFactory.get_trip_member_repository()
+    user_repo = RepositoryFactory.get_user_repository()
+    trip_repo = RepositoryFactory.get_trip_repository()
     
-    create_expense_use_case = CreateExpense(expense_repo, expense_service, event_bus)
-    update_expense_use_case = UpdateExpense(expense_repo, expense_service, event_bus)
-    delete_expense_use_case = DeleteExpense(expense_repo, expense_service, event_bus)
-    get_expense_use_case = GetExpense(expense_repo)
-    get_trip_expenses_use_case = GetTripExpenses(expense_repo, expense_service)
+    expense_service = ExpenseService(
+        expense_repository=expense_repo,
+        trip_member_repository=trip_member_repo,
+        user_repository=user_repo,
+        trip_repository=trip_repo
+    )
+    
+    create_expense_use_case = CreateExpenseUseCase(
+        expense_repository=expense_repo,
+        expense_service=expense_service
+    )
+    
+    get_expense_use_case = GetExpenseUseCase(
+        expense_repository=expense_repo,
+        expense_service=expense_service,
+        user_repository=user_repo
+    )
+    
+    get_trip_expenses_use_case = GetTripExpensesUseCase(
+        expense_repository=expense_repo,
+        expense_service=expense_service,
+        trip_member_repository=trip_member_repo
+    )
+    
+    update_expense_use_case = UpdateExpenseUseCase(
+        expense_repository=expense_repo,
+        expense_service=expense_service
+    )
+    
+    change_expense_status_use_case = ChangeExpenseStatusUseCase(
+        expense_repository=expense_repo,
+        expense_service=expense_service
+    )
+    
+    delete_expense_use_case = DeleteExpenseUseCase(
+        expense_repository=expense_repo,
+        expense_service=expense_service
+    )
+    
+    get_expense_summary_use_case = GetExpenseSummaryUseCase(
+        expense_repository=expense_repo,
+        expense_service=expense_service,
+        trip_member_repository=trip_member_repo
+    )
     
     return ExpenseController(
-        create_expense_use_case,
-        update_expense_use_case,
-        delete_expense_use_case,
-        get_expense_use_case,
-        get_trip_expenses_use_case
+        create_expense_use_case=create_expense_use_case,
+        get_expense_use_case=get_expense_use_case,
+        get_trip_expenses_use_case=get_trip_expenses_use_case,
+        update_expense_use_case=update_expense_use_case,
+        change_expense_status_use_case=change_expense_status_use_case,
+        delete_expense_use_case=delete_expense_use_case,
+        get_expense_summary_use_case=get_expense_summary_use_case
     )
 
-@router.post("", summary="Crear gasto")
+@router.post("/")
 async def create_expense(
-    request: Dict[str, Any] = Body(...),
-    controller: ExpenseController = Depends(get_expense_controller),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    dto: CreateExpenseDTO,
+    current_user: dict = Depends(get_current_user),
+    controller: ExpenseController = Depends(get_expense_controller)
 ):
-    return await controller.create_expense(request, current_user)
+    return await controller.create_expense(dto, current_user)
 
-@router.get("/{expense_id}", summary="Obtener gasto")
+@router.get("/{expense_id}")
 async def get_expense(
     expense_id: str = Path(...),
-    controller: ExpenseController = Depends(get_expense_controller),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
+    controller: ExpenseController = Depends(get_expense_controller)
 ):
     return await controller.get_expense(expense_id, current_user)
 
-@router.put("/{expense_id}", summary="Actualizar gasto")
+@router.put("/{expense_id}")
 async def update_expense(
     expense_id: str = Path(...),
-    request: Dict[str, Any] = Body(...),
-    controller: ExpenseController = Depends(get_expense_controller),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    dto: UpdateExpenseDTO = None,
+    current_user: dict = Depends(get_current_user),
+    controller: ExpenseController = Depends(get_expense_controller)
 ):
-    return await controller.update_expense(expense_id, request, current_user)
+    return await controller.update_expense(expense_id, dto, current_user)
 
-@router.delete("/{expense_id}", summary="Eliminar gasto")
+@router.delete("/{expense_id}")
 async def delete_expense(
     expense_id: str = Path(...),
-    controller: ExpenseController = Depends(get_expense_controller),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
+    controller: ExpenseController = Depends(get_expense_controller)
 ):
     return await controller.delete_expense(expense_id, current_user)
 
-@router.get("/trips/{trip_id}", summary="Gastos del viaje")
+@router.put("/{expense_id}/status")
+async def change_expense_status(
+    expense_id: str = Path(...),
+    dto: ChangeExpenseStatusDTO = None,
+    current_user: dict = Depends(get_current_user),
+    controller: ExpenseController = Depends(get_expense_controller)
+):
+    return await controller.change_expense_status(expense_id, dto, current_user)
+
+@router.get("/trip/{trip_id}")
 async def get_trip_expenses(
     trip_id: str = Path(...),
     category: Optional[str] = Query(None),
-    user_filter: Optional[str] = Query(None),
-    include_summary: bool = Query(True),
-    controller: ExpenseController = Depends(get_expense_controller),
-    current_user: Dict[str, Any] = Depends(get_current_user)
-):
-    return await controller.get_trip_expenses(
-        trip_id, current_user, category, user_filter, include_summary
-    )
-
-@router.get("/categories/available", summary="Categorías disponibles")
-async def get_available_categories(
+    current_user: dict = Depends(get_current_user),
     controller: ExpenseController = Depends(get_expense_controller)
 ):
-    return await controller.get_available_categories()
+    return await controller.get_trip_expenses(trip_id, category, current_user)
 
-@router.post("/{expense_id}/confirm", summary="Confirmar gasto")
-async def confirm_expense(
-    expense_id: str = Path(...),
-    controller: ExpenseController = Depends(get_expense_controller),
-    current_user: Dict[str, Any] = Depends(get_current_user)
-):
-    return {"message": "Funcionalidad disponible próximamente"}
-
-@router.post("/{expense_id}/receipt", summary="Subir comprobante")
-async def upload_receipt(
-    expense_id: str = Path(...),
-    receipt_data: Dict[str, Any] = Body(...),
-    controller: ExpenseController = Depends(get_expense_controller),
-    current_user: Dict[str, Any] = Depends(get_current_user)
-):
-    return {"message": "Funcionalidad disponible próximamente"}
-
-@router.get("/trips/{trip_id}/summary", summary="Resumen financiero")
-async def get_financial_summary(
+@router.get("/trip/{trip_id}/summary")
+async def get_expense_summary(
     trip_id: str = Path(...),
-    controller: ExpenseController = Depends(get_expense_controller),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
+    controller: ExpenseController = Depends(get_expense_controller)
 ):
-    return {"message": "Funcionalidad disponible próximamente"}
+    return await controller.get_expense_summary(trip_id, current_user)
 
-@router.get("/trips/{trip_id}/timeline", summary="Timeline de gastos")
-async def get_expenses_timeline(
-    trip_id: str = Path(...),
-    controller: ExpenseController = Depends(get_expense_controller),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+@router.get("/health")
+async def health_check(
+    controller: ExpenseController = Depends(get_expense_controller)
 ):
-    return {"message": "Funcionalidad disponible próximamente"}
+    return await controller.health_check()

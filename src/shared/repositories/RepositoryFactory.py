@@ -8,6 +8,7 @@ from modules.activities.infrastructure.repositories.activity_mongo_repository im
 from modules.diary_entries.infrastructure.repositories.diary_entry_mongo_repository import DiaryEntryMongoRepository
 from modules.expenses.infrastructure.repositories.expense_mongo_repository import ExpenseMongoRepository
 
+
 class RepositoryFactory:
     _instances: Dict[str, Any] = {}
     

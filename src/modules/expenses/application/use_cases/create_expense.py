@@ -1,31 +1,28 @@
-from typing import Optional, Dict, Any
-from decimal import Decimal
-from datetime import datetime
-from ...domain.expense import Expense, ExpenseCategory
+from ..dtos.expense_dto import CreateExpenseDTO, ExpenseResponseDTO, ExpenseDTOMapper
+from ...domain.expense import Expense
 from ...domain.expense_service import ExpenseService
 from ...domain.interfaces.expense_repository_interface import ExpenseRepositoryInterface
-from ...domain.expense_events import ExpenseCreatedEvent
-from ..dtos.create_expense_dto import CreateExpenseDTO
-from shared.errors.custom_errors import ValidationError, NotFoundError
-from shared.events.event_bus import EventBus
 
 
-class CreateExpense:
+class CreateExpenseUseCase:
     def __init__(
-        self, 
+        self,
         expense_repository: ExpenseRepositoryInterface,
-        expense_service: ExpenseService,
-        event_bus: EventBus
+        expense_service: ExpenseService
     ):
         self._expense_repository = expense_repository
         self._expense_service = expense_service
-        self._event_bus = event_bus
 
-    async def execute(self, dto: CreateExpenseDTO, user_id: str) -> Dict[str, Any]:
+    async def execute(self, dto: CreateExpenseDTO, user_id: str) -> ExpenseResponseDTO:
         """Crear nuevo gasto"""
         
-        # Validar monto y moneda
-        await self._expense_service.validate_expense_amount_limits(dto.amount, dto.currency)
+        # Validar creación del gasto
+        trip_id = await self._expense_service.validate_expense_creation(
+            trip_id=dto.trip_id,
+            user_id=user_id,
+            amount=dto.amount,
+            currency=dto.currency
+        )
 
         # Crear entidad de gasto
         expense = Expense.create(
@@ -33,7 +30,7 @@ class CreateExpense:
             user_id=user_id,
             amount=dto.amount,
             currency=dto.currency,
-            category=ExpenseCategory(dto.category),
+            category=dto.category.value,
             description=dto.description,
             expense_date=dto.expense_date,
             is_shared=dto.is_shared,
@@ -46,33 +43,17 @@ class CreateExpense:
         )
 
         # Guardar en repositorio
-        await self._expense_repository.save(expense)
+        created_expense = await self._expense_repository.save(expense)
 
-        # Publicar evento
-        event = ExpenseCreatedEvent(
-            expense_id=expense.id,
-            trip_id=expense.trip_id,
-            user_id=user_id,
-            amount=expense.amount,
-            currency=expense.currency,
-            category=expense.category.value,
-            is_shared=expense.is_shared,
-            activity_id=expense._data.activity_id,
-            diary_entry_id=expense._data.diary_entry_id
+        # Determinar permisos del usuario
+        can_edit = created_expense.user_id == user_id
+        can_delete = created_expense.user_id == user_id
+        can_change_status = can_edit
+
+        # Retornar DTO de respuesta
+        return ExpenseDTOMapper.to_expense_response(
+            created_expense.to_public_data(),
+            can_edit=can_edit,
+            can_delete=can_delete,
+            can_change_status=can_change_status
         )
-        await self._event_bus.publish(event)
-
-        return {
-            "success": True,
-            "message": "Gasto creado exitosamente",
-            "data": {
-                "expense_id": expense.id,
-                "amount": float(expense.amount),
-                "currency": expense.currency,
-                "category": expense.category.value,
-                "description": expense._data.description,
-                "is_shared": expense.is_shared,
-                "requires_receipt": await self._expense_service.should_require_receipt(expense),
-                "created_at": expense._data.created_at.isoformat()
-            }
-        }
