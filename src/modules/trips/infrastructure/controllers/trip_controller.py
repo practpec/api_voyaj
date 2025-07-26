@@ -46,7 +46,7 @@ class TripController:
         remove_trip_member_use_case: RemoveTripMemberUseCase,
         update_member_role_use_case: UpdateMemberRoleUseCase
     ):
-        self.router = APIRouter(prefix="/api/trips", tags=["trips"])
+        self.router = APIRouter()
         self._create_trip_use_case = create_trip_use_case
         self._get_trip_use_case = get_trip_use_case
         self._get_user_trips_use_case = get_user_trips_use_case

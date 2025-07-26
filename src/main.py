@@ -13,6 +13,7 @@ sys.path.append(str(Path(__file__).parent))
 from modules.users.infrastructure.routes.UserRoutes import router as user_router
 from modules.friendships.infrastructure.routes.FriendshipRoutes import router as friendship_router
 from modules.trips.infrastructure.routes.trip_routes import router as trip_router
+from modules.days.infrastructure.routes.day_routes import router as day_router
 from shared.database.Connection import DatabaseConnection
 from shared.routes.UploadRoutes import router as upload_router
 from shared.middleware.ErrorMiddleware import ErrorMiddleware
@@ -68,6 +69,7 @@ app.add_middleware(
 app.include_router(user_router, prefix="/api/users", tags=["Usuarios"])
 app.include_router(friendship_router, prefix="/api/friendships", tags=["Amistades"])
 app.include_router(trip_router, prefix="/api/trips", tags=["Viajes"])
+app.include_router(day_router, prefix="/api/days", tags=["Días"])
 app.include_router(upload_router, tags=["Archivos"])
 
 # Health check endpoint
@@ -105,7 +107,13 @@ async def root():
         "status": "running",
         "documentation": {"swagger": "/docs", "redoc": "/redoc"},
         "health_check": "/health",
-        "endpoints": {"users": "/api/users", "friendships": "/api/friendships", "trips":"/api/trips", "uploads": "/api/upload"},
+        "endpoints": {
+            "users": "/api/users",
+            "friendships": "/api/friendships",
+            "trips": "/api/trips",
+            "days": "/api/days",
+            "uploads": "/api/upload"
+        },
         "environment": os.getenv("ENVIRONMENT", "development")
     }
 

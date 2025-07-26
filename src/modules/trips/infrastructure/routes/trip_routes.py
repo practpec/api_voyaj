@@ -23,7 +23,8 @@ from ...application.use_cases.leave_trip import LeaveTripUseCase
 from ...application.use_cases.remove_trip_member import RemoveTripMemberUseCase
 from ...application.use_cases.update_member_role import UpdateMemberRoleUseCase
 
-router = APIRouter(prefix="/api/trips", tags=["trips"])
+# CORREGIDO: Eliminar prefix y cambiar tags para evitar duplicación
+router = APIRouter()
 
 def get_trip_controller():
     trip_repo = RepositoryFactory.get_trip_repository()
