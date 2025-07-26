@@ -4,6 +4,8 @@ from .EmailService import EmailService
 from .UploadService import UploadService
 from modules.friendships.domain.friendship_service import FriendshipService
 from modules.trips.domain.trip_service import TripService
+from modules.activities.domain.activity_service import ActivityService
+from modules.diary_entries.domain.diary_entry_service import DiaryEntryService
 from shared.repositories.RepositoryFactory import RepositoryFactory
 
 class ServiceFactory:
@@ -42,6 +44,32 @@ class ServiceFactory:
             user_repo = RepositoryFactory.get_user_repository()
             cls._instances['trip'] = TripService(trip_repo, trip_member_repo, user_repo)
         return cls._instances['trip']
+    
+    @classmethod
+    def get_activity_service(cls) -> ActivityService:
+        if 'activity' not in cls._instances:
+            activity_repo = RepositoryFactory.get_activity_repository()
+            day_repo = RepositoryFactory.get_day_repository()
+            trip_member_repo = RepositoryFactory.get_trip_member_repository()
+            cls._instances['activity'] = ActivityService(
+                activity_repository=activity_repo,
+                day_repository=day_repo,
+                trip_member_repository=trip_member_repo
+            )
+        return cls._instances['activity']
+    
+    @classmethod
+    def get_diary_entry_service(cls) -> DiaryEntryService:
+        if 'diary_entry' not in cls._instances:
+            diary_entry_repo = RepositoryFactory.get_diary_entry_repository()
+            day_repo = RepositoryFactory.get_day_repository()
+            trip_member_repo = RepositoryFactory.get_trip_member_repository()
+            cls._instances['diary_entry'] = DiaryEntryService(
+                diary_entry_repository=diary_entry_repo,
+                day_repository=day_repo,
+                trip_member_repository=trip_member_repo
+            )
+        return cls._instances['diary_entry']
     
     @classmethod
     def clear_instances(cls):
