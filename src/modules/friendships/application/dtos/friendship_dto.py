@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional, Any, Dict
-from domain.friendship import FriendshipData
+from ...domain.friendship import FriendshipData
 
 
 @dataclass

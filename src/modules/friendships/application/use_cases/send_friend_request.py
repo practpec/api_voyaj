@@ -1,8 +1,8 @@
 from ..dtos.friendship_dto import SendFriendRequestDTO, FriendshipResponseDTO, FriendshipDTOMapper
-from domain.friendship import Friendship
-from domain.friendship_service import FriendshipService
-from domain.friendship_events import FriendRequestSentEvent
-from domain.interfaces.friendship_repository import IFriendshipRepository
+from ...domain.friendship import Friendship
+from ...domain.friendship_service import FriendshipService
+from ...domain.friendship_events import FriendRequestSentEvent
+from ...domain.interfaces.friendship_repository import IFriendshipRepository
 from modules.users.domain.interfaces.IUserRepository import IUserRepository
 from shared.events.event_bus import EventBus
 from shared.errors.custom_errors import NotFoundError

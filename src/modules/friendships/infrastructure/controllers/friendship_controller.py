@@ -1,21 +1,21 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Annotated, List
 
-from application.dtos.friendship_dto import (
+from ...application.dtos.friendship_dto import (
     SendFriendRequestDTO, 
     FriendshipResponseDTO, 
     FriendListResponseDTO,
     FriendRequestResponseDTO,
     FriendSuggestionDTO
 )
-from application.use_cases.send_friend_request import SendFriendRequestUseCase
-from application.use_cases.accept_friend_request import AcceptFriendRequestUseCase
-from application.use_cases.reject_friend_request import RejectFriendRequestUseCase
-from application.use_cases.remove_friendship import RemoveFriendshipUseCase
-from application.use_cases.get_friends import GetFriendsUseCase
-from application.use_cases.get_friend_requests import GetFriendRequestsUseCase
-from application.use_cases.get_friend_suggestions import GetFriendSuggestionsUseCase
-from application.use_cases.get_friendship_stats import GetFriendshipStatsUseCase, FriendshipStatsDTO
+from ...application.use_cases.send_friend_request import SendFriendRequestUseCase
+from ...application.use_cases.accept_friend_request import AcceptFriendRequestUseCase
+from ...application.use_cases.reject_friend_request import RejectFriendRequestUseCase
+from ...application.use_cases.remove_friendship import RemoveFriendshipUseCase
+from ...application.use_cases.get_friends import GetFriendsUseCase
+from ...application.use_cases.get_friend_requests import GetFriendRequestsUseCase
+from ...application.use_cases.get_friend_suggestions import GetFriendSuggestionsUseCase
+from ...application.use_cases.get_friendship_stats import GetFriendshipStatsUseCase, FriendshipStatsDTO
 from shared.middleware.AuthMiddleware import get_current_user
 from shared.utils.response_utils import SuccessResponse, PaginatedResponse
 from shared.utils.validation_utils import ValidationUtils
