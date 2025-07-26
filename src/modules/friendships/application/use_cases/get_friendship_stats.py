@@ -1,6 +1,6 @@
 # src/modules/friendships/application/use_cases/get_friendship_stats.py
 from dataclasses import dataclass
-from domain.interfaces.friendship_repository import IFriendshipRepository
+from ...domain.interfaces.friendship_repository import IFriendshipRepository
 
 
 @dataclass

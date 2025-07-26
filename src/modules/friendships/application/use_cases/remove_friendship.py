@@ -1,6 +1,6 @@
-from domain.friendship_service import FriendshipService
-from domain.friendship_events import FriendshipRemovedEvent
-from domain.interfaces.friendship_repository import IFriendshipRepository
+from ...domain.friendship_service import FriendshipService
+from ...domain.friendship_events import FriendshipRemovedEvent
+from ...domain.interfaces.friendship_repository import IFriendshipRepository
 from shared.events.event_bus import EventBus
 from shared.errors.custom_errors import NotFoundError
 

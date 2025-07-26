@@ -5,9 +5,9 @@ from shared.events.base_event import DomainEvent
 
 @dataclass
 class FriendRequestSentEvent(DomainEvent):
-    requester_id: str
-    recipient_id: str
-    friendship_id: str
+    requester_id: str = ""
+    recipient_id: str = ""
+    friendship_id: str = ""
     
     def __post_init__(self):
         self.event_type = "friend_request_sent"
@@ -16,9 +16,9 @@ class FriendRequestSentEvent(DomainEvent):
 
 @dataclass
 class FriendRequestAcceptedEvent(DomainEvent):
-    requester_id: str
-    recipient_id: str
-    friendship_id: str
+    requester_id: str = ""
+    recipient_id: str = ""
+    friendship_id: str = ""
     
     def __post_init__(self):
         self.event_type = "friend_request_accepted"
@@ -27,9 +27,9 @@ class FriendRequestAcceptedEvent(DomainEvent):
 
 @dataclass
 class FriendRequestRejectedEvent(DomainEvent):
-    requester_id: str
-    recipient_id: str
-    friendship_id: str
+    requester_id: str = ""
+    recipient_id: str = ""
+    friendship_id: str = ""
     
     def __post_init__(self):
         self.event_type = "friend_request_rejected"
@@ -38,9 +38,9 @@ class FriendRequestRejectedEvent(DomainEvent):
 
 @dataclass
 class FriendshipRemovedEvent(DomainEvent):
-    user_id: str
-    friend_id: str
-    friendship_id: str
+    user_id: str = ""
+    friend_id: str = ""
+    friendship_id: str = ""
     
     def __post_init__(self):
         self.event_type = "friendship_removed"

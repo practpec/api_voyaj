@@ -1,8 +1,8 @@
 # src/modules/friendships/application/use_cases/get_friend_suggestions.py
 from typing import List
 from ..dtos.friendship_dto import FriendSuggestionDTO, FriendshipDTOMapper
-from domain.friendship_service import FriendshipService
-from domain.interfaces.friendship_repository import IFriendshipRepository
+from ...domain.friendship_service import FriendshipService
+from ...domain.interfaces.friendship_repository import IFriendshipRepository
 from modules.users.domain.interfaces.IUserRepository import IUserRepository
 
 
