@@ -1,3 +1,4 @@
+# src/shared/services/ServiceFactory.py
 from typing import Dict, Any
 from .AuthService import AuthService
 from .EmailService import EmailService
@@ -110,6 +111,19 @@ class ServiceFactory:
                 trip_repository=trip_repo
             )
         return cls._instances['expense']
+    
+    @classmethod
+    def get_expense_split_service(cls):
+        """Obtener servicio de divisiones de gastos"""
+        if 'expense_split' not in cls._instances:
+            from modules.expense_splits.domain.expense_split_service import ExpenseSplitService
+            
+            expense_split_repo = RepositoryFactory.get_expense_split_repository()
+            
+            cls._instances['expense_split'] = ExpenseSplitService(
+                expense_split_repository=expense_split_repo
+            )
+        return cls._instances['expense_split']
     
     @classmethod
     def clear_instances(cls):

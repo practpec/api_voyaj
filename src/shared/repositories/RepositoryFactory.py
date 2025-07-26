@@ -7,6 +7,7 @@ from modules.days.infrastructure.repositories.day_mongo_repository import DayMon
 from modules.activities.infrastructure.repositories.activity_mongo_repository import ActivityMongoRepository
 from modules.diary_entries.infrastructure.repositories.diary_entry_mongo_repository import DiaryEntryMongoRepository
 from modules.expenses.infrastructure.repositories.expense_mongo_repository import ExpenseMongoRepository
+from modules.expense_splits.infrastructure.repositories.expense_split_mongo_repository import ExpenseSplitMongoRepository
 
 
 class RepositoryFactory:
@@ -59,6 +60,12 @@ class RepositoryFactory:
         if 'expense' not in cls._instances:
             cls._instances['expense'] = ExpenseMongoRepository()
         return cls._instances['expense']
+    
+    @classmethod
+    def get_expense_split_repository(cls) -> ExpenseSplitMongoRepository:
+        if 'expense_split' not in cls._instances:
+            cls._instances['expense_split'] = ExpenseSplitMongoRepository()
+        return cls._instances['expense_split']
     
     @classmethod
     def clear_instances(cls):
