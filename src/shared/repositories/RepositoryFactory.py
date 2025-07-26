@@ -9,6 +9,7 @@ from modules.diary_entries.infrastructure.repositories.diary_entry_mongo_reposit
 from modules.expenses.infrastructure.repositories.expense_mongo_repository import ExpenseMongoRepository
 from modules.expense_splits.infrastructure.repositories.expense_split_mongo_repository import ExpenseSplitMongoRepository
 from modules.photos.infrastructure.repositories.photo_mongo_repository import PhotoMongoRepository
+from modules.activity_votes.infrastructure.repositories.activity_vote_mongo_repository import ActivityVoteMongoRepository
 
 
 class RepositoryFactory:
@@ -73,6 +74,12 @@ class RepositoryFactory:
         if 'photo' not in cls._instances:
             cls._instances['photo'] = PhotoMongoRepository()
         return cls._instances['photo']
+    
+    @classmethod
+    def get_activity_vote_repository(cls) -> ActivityVoteMongoRepository:
+        if 'activity_vote' not in cls._instances:
+            cls._instances['activity_vote'] = ActivityVoteMongoRepository()
+        return cls._instances['activity_vote']
     
     @classmethod
     def clear_instances(cls):

@@ -19,6 +19,7 @@ from modules.diary_entries.infrastructure.routes.diary_entry_routes import route
 from modules.expenses.infrastructure.routes.expense_routes import router as expense_router
 from modules.expense_splits.infrastructure.routes.expense_split_routes import router as expense_split_routes
 from modules.photos.infrastructure.routes.photo_routes import router as photo_router
+from modules.activity_votes.infrastructure.routes.activity_vote_routes import router as activity_vote_routes
 
 
 from shared.database.Connection import DatabaseConnection
@@ -83,6 +84,7 @@ app.include_router(diary_router, prefix="/api/diary", tags=["Diario"])
 app.include_router(expense_router, prefix="/api/expenses", tags=["Gastos"])
 app.include_router(expense_split_routes, prefix="/api/expenses-split", tags=["Gastos Compartidos"])
 app.include_router(photo_router, prefix="/api/photos", tags=["Fotos"])
+app.include_router(activity_vote_routes, prefix="/api/activity-votes", tags=["Votos de Actividades"])
 app.include_router(upload_router, tags=["Archivos"])
 
 # Health check endpoint
@@ -110,6 +112,7 @@ async def health_check():
                 "expenses": "active",
                 "expense_splits": "active",
                 "photos": "active",
+                "activity_votes": "active",
                 "uploads": "active"
             }
         }
@@ -142,10 +145,11 @@ async def root():
             "expenses": "/api/expenses",
             "expenses_split": "/api/expenses-split",
             "photos": "/api/photos",
+            "activity_votes": "/api/activity-votes",
             "uploads": "/api/upload"
         },
         "modules_status": {
-            "core": ["users", "trips", "days", "activities","photos"],
+            "core": ["users", "trips", "days", "activities","photos", "activity_votes"],
             "social": ["friendships"],
             "content": ["diary_entries"],
             "financial": ["expenses", "expense_splits"],

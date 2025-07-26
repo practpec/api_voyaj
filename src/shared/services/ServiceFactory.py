@@ -141,5 +141,22 @@ class ServiceFactory:
         return cls._instances['photo']
     
     @classmethod
+    def get_activity_vote_service(cls):
+        """Obtener servicio de votos de actividades"""
+        if 'activity_vote' not in cls._instances:
+            from modules.activity_votes.domain.activity_vote_service import ActivityVoteService
+            
+            activity_vote_repo = RepositoryFactory.get_activity_vote_repository()
+            activity_repo = RepositoryFactory.get_activity_repository()
+            trip_member_repo = RepositoryFactory.get_trip_member_repository()
+            
+            cls._instances['activity_vote'] = ActivityVoteService(
+                activity_vote_repository=activity_vote_repo,
+                activity_repository=activity_repo,
+                trip_member_repository=trip_member_repo
+            )
+        return cls._instances['activity_vote']
+    
+    @classmethod
     def clear_instances(cls):
         cls._instances.clear()
