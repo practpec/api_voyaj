@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verificación de Email</title>
+    <style>
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
+        .header { background: #4CAF50; color: white; padding: 40px 30px; text-align: center; }
+        .header h1 { margin: 0; font-size: 28px; font-weight: 300; }
+        .content { padding: 40px 30px; }
+        .content h2 { color: #333; margin-top: 0; font-size: 24px; font-weight: 400; }
+        .content p { color: #666; line-height: 1.6; margin-bottom: 20px; }
+        .code { background: #e8f5e8; color: #2e7d32; padding: 20px; border-radius: 8px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 3px; margin: 25px 0; font-family: 'Courier New', monospace; border: 2px solid #4CAF50; }
+        .footer { background: #f8f9fa; padding: 30px; text-align: center; color: #666; font-size: 14px; }
+        .expiry { background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 15px; border-radius: 5px; margin: 20px 0; text-align: center; }
+        @media (max-width: 600px) {
+            .container { width: 100% !important; }
+            .header, .content, .footer { padding: 20px !important; }
+            .code { font-size: 24px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔐 Verificación de Email</h1>
+        </div>
+        
+        <div class="content">
+            <h2>Hola {{ name }},</h2>
+            <p>Aquí tienes tu código de verificación para activar tu cuenta:</p>
+            
+            <div class="code">{{ verification_code }}</div>
+            
+            <div class="expiry">
+                <strong>⏰ Este código expira en 24 horas</strong>
+            </div>
+            
+            <p>Ingresa este código en la aplicación para completar la verificación de tu email.</p>
+            <p>Si no solicitaste esta verificación, puedes ignorar este mensaje de manera segura.</p>
+        </div>
+        
+        <div class="footer">
+            <p>© 2025 Voyaj. Todos los derechos reservados.</p>
+        </div>
+    </div>
+</body>
+</html>
