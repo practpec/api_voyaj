@@ -167,3 +167,15 @@ class ForbiddenError(Exception):
     def __init__(self, message: str = "Acceso denegado"):
         self.message = message
         super().__init__(self.message)
+
+class BusinessRuleError(AppError):
+    """Error por violación de una regla de negocio"""
+    
+    def __init__(self, message: str, details: Optional[Any] = None):
+        super().__init__(
+            message=message,
+            status_code=409,  # Conflict: la acción no puede completarse debido al estado actual del recurso.
+            error_code="BUSINESS_RULE_ERROR",
+            is_operational=True,
+            details=details
+        )

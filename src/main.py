@@ -16,9 +16,8 @@ from modules.trips.infrastructure.routes.trip_routes import router as trip_route
 from modules.days.infrastructure.routes.day_routes import router as day_router
 from modules.activities.infrastructure.routes.activity_routes import router as activity_router
 from modules.diary_entries.infrastructure.routes.diary_entry_routes import router as diary_router
-
-# Import new expenses module
 from modules.expenses.infrastructure.routes.expense_routes import router as expense_router
+from modules.expense_splits.infrastructure.routes.expense_split_routes import router as expense_split_routes
 
 from shared.database.Connection import DatabaseConnection
 from shared.routes.UploadRoutes import router as upload_router
@@ -80,6 +79,7 @@ app.include_router(day_router, prefix="/api/days", tags=["Días"])
 app.include_router(activity_router, prefix="/api/activities", tags=["Actividades"])
 app.include_router(diary_router, prefix="/api/diary", tags=["Diario"])
 app.include_router(expense_router, prefix="/api/expenses", tags=["Gastos"])
+app.include_router(expense_split_routes, prefix="/api/expenses-split", tags=["Gastos Compartidos"])
 app.include_router(upload_router, tags=["Archivos"])
 
 # Health check endpoint
