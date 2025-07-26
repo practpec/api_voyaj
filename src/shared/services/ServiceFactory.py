@@ -175,3 +175,18 @@ class ServiceFactory:
                 diary_entry_repository=diary_entry_repo
             )
         return cls._instances['diary_recommendation']
+    
+    @classmethod
+    def get_plan_reality_difference_service(cls):
+        """Obtener servicio de diferencias plan vs realidad"""
+        if 'plan_reality_difference' not in cls._instances:
+            from modules.plan_reality_differences.domain.plan_reality_difference_service import PlanRealityDifferenceService
+            
+            plan_reality_difference_repo = RepositoryFactory.get_plan_reality_difference_repository()
+            trip_member_repo = RepositoryFactory.get_trip_member_repository()
+            
+            cls._instances['plan_reality_difference'] = PlanRealityDifferenceService(
+                plan_reality_difference_repository=plan_reality_difference_repo,
+                trip_member_repository=trip_member_repo
+            )
+        return cls._instances['plan_reality_difference']

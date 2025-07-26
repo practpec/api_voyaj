@@ -21,7 +21,7 @@ from modules.expense_splits.infrastructure.routes.expense_split_routes import ro
 from modules.photos.infrastructure.routes.photo_routes import router as photo_router
 from modules.activity_votes.infrastructure.routes.activity_vote_routes import router as activity_vote_routes
 from modules.diary_recommendations.infrastructure.routes.diary_recommendation_routes import router as diary_recommendation_router
-
+from src.modules.plan_reality_differences.infrastructure.routes.plan_reality_difference_routes import router as plan_reality_differences_router
 
 from shared.database.Connection import DatabaseConnection
 from shared.routes.UploadRoutes import router as upload_router
@@ -87,6 +87,7 @@ app.include_router(expense_split_routes, prefix="/api/expenses-split", tags=["Ga
 app.include_router(photo_router, prefix="/api/photos", tags=["Fotos"])
 app.include_router(activity_vote_routes, prefix="/api/activity-votes", tags=["Votos de Actividades"])
 app.include_router(diary_recommendation_router, prefix="/api/diary-recommendations", tags=["Recomendaciones de Diario"])
+app.include_router(plan_reality_differences_router, prefix="/api/plan-reality-differences", tags=["Diferencias en el Plan y la Realidad"])
 app.include_router(upload_router, tags=["Archivos"])
 
 # Health check endpoint
@@ -116,6 +117,7 @@ async def health_check():
                 "photos": "active",
                 "activity_votes": "active",
                 "diary-recommentations": "active",
+                "plan_reality_differences": "active",
                 "uploads": "active"
             }
         }
@@ -155,7 +157,7 @@ async def root():
         "modules_status": {
             "core": ["users", "trips", "days", "activities","photos", "activity_votes"],
             "social": ["friendships"],
-            "content": ["diary_entries", "diary_recommendations"],
+            "content": ["diary_entries", "diary_recommendations", "plan_reality_differences"],
             "financial": ["expenses", "expense_splits"],
             "storage": ["uploads"]
         },

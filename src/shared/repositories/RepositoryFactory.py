@@ -12,6 +12,7 @@ from modules.expense_splits.infrastructure.repositories.expense_split_mongo_repo
 from modules.photos.infrastructure.repositories.photo_mongo_repository import PhotoMongoRepository
 from modules.activity_votes.infrastructure.repositories.activity_vote_mongo_repository import ActivityVoteMongoRepository
 from modules.diary_recommendations.infrastructure.repositories.diary_recommendation_mongo_repository import DiaryRecommendationMongoRepository
+from modules.plan_reality_differences.infrastructure.repositories.plan_reality_difference_mongo_repository import PlanRealityDifferenceMongoRepository
 
 
 class RepositoryFactory:
@@ -88,3 +89,11 @@ class RepositoryFactory:
         if 'diary_recommendation' not in cls._instances:
             cls._instances['diary_recommendation'] = DiaryRecommendationMongoRepository()
         return cls._instances['diary_recommendation']
+    
+    @classmethod
+    def get_plan_reality_difference_repository(cls):
+        """Obtener repositorio de diferencias plan vs realidad"""
+        if 'plan_reality_difference' not in cls._instances:
+            from modules.plan_reality_differences.infrastructure.repositories.plan_reality_difference_mongo_repository import PlanRealityDifferenceMongoRepository
+            cls._instances['plan_reality_difference'] = PlanRealityDifferenceMongoRepository()
+        return cls._instances['plan_reality_difference']
