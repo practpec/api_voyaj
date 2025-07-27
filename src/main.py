@@ -21,7 +21,7 @@ from modules.expense_splits.infrastructure.routes.expense_split_routes import ro
 from modules.photos.infrastructure.routes.photo_routes import router as photo_router
 from modules.activity_votes.infrastructure.routes.activity_vote_routes import router as activity_vote_routes
 from modules.diary_recommendations.infrastructure.routes.diary_recommendation_routes import router as diary_recommendation_router
-from src.modules.plan_reality_differences.infrastructure.routes.plan_reality_difference_routes import router as plan_reality_differences_router
+from modules.plan_reality_differences.infrastructure.routes.plan_reality_difference_routes import router as plan_reality_differences_router
 
 from shared.database.Connection import DatabaseConnection
 from shared.routes.UploadRoutes import router as upload_router

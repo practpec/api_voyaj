@@ -1,4 +1,3 @@
-# src/modules/friendships/infrastructure/repositories/friendship_mongo_repository.py
 from typing import List, Optional, Any
 from motor.motor_asyncio import AsyncIOMotorCollection
 from pymongo import ASCENDING, DESCENDING
@@ -12,7 +11,7 @@ from shared.errors.custom_errors import DatabaseError
 
 class FriendshipMongoRepository(IFriendshipRepository):
     def __init__(self):
-        self._db = DatabaseConnection.get_instance().get_database()
+        self._db = DatabaseConnection.get_database()
         self._collection: AsyncIOMotorCollection = self._db.friendships
         self._create_indexes()
 

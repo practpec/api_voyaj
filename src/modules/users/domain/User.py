@@ -103,7 +103,7 @@ class User:
 
     def generate_password_reset_code(self) -> str:
         """Generar código de recuperación de contraseña"""
-        code = self._generate_secure_code(8)
+        code = self._generate_secure_code(6)
         self.codigo_recuperacion_password = code
         self.codigo_recuperacion_password_expira = datetime.utcnow() + timedelta(hours=1)
         self.actualizado_en = datetime.utcnow()
