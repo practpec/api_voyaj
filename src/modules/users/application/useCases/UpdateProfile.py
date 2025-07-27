@@ -1,6 +1,8 @@
+# src/modules/users/application/useCases/UpdateProfileUseCase.py
 from ..dtos.UserDTOs import UpdateProfileDTO, AuthenticatedUserDTO
 from ...domain.interfaces.IUserRepository import IUserRepository
 from shared.exceptions.UserExceptions import UserNotFoundException
+
 
 class UpdateProfileUseCase:
     def __init__(self, user_repository: IUserRepository):

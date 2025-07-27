@@ -1,57 +1,139 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-    <meta charset="utf-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bienvenido a Voyaj</title>
-    <link rel="stylesheet" href="styles/voyaj-email.css">
+    <title>¡Bienvenido a {{ app_name }}!</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .welcome-message {
+            font-size: 18px;
+            color: #374151;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        .verification-box {
+            background-color: #f3f4f6;
+            border: 2px dashed #d1d5db;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            margin: 30px 0;
+        }
+        .verification-code {
+            font-size: 32px;
+            font-weight: bold;
+            color: #2563eb;
+            letter-spacing: 4px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+        }
+        .code-label {
+            font-size: 14px;
+            color: #6b7280;
+            margin-bottom: 10px;
+        }
+        .expiry-notice {
+            font-size: 14px;
+            color: #ef4444;
+            margin-top: 15px;
+        }
+        .instructions {
+            background-color: #eff6ff;
+            border-left: 4px solid #2563eb;
+            padding: 20px;
+            margin: 30px 0;
+        }
+        .instructions h3 {
+            margin: 0 0 15px 0;
+            color: #1e40af;
+        }
+        .instructions p {
+            margin: 8px 0;
+            color: #374151;
+        }
+        .footer {
+            background-color: #f9fafb;
+            padding: 30px;
+            text-align: center;
+            color: #6b7280;
+            font-size: 14px;
+        }
+        .footer a {
+            color: #2563eb;
+            text-decoration: none;
+        }
+        .divider {
+            height: 1px;
+            background-color: #e5e7eb;
+            margin: 30px 0;
+        }
+    </style>
 </head>
 <body>
-    <div class="email-container">
-        <div class="email-header primary">
-            <div class="logo-section">
-                <div class="pin-icon">📍</div>
-            </div>
-            <div class="voyaj-logo">
-                <span>Voyaj</span>
-            </div>
-            <p>Tu plataforma para planificar viajes increíbles</p>
+    <div class="container">
+        <div class="header">
+            <h1>¡Bienvenido a {{ app_name }}!</h1>
         </div>
         
-        <div class="email-content">
-            <h2>Hola {{ name }},</h2>
-            <p>Estamos emocionados de tenerte en nuestra comunidad de viajeros. Voyaj te ayudará a planificar, organizar y compartir tus aventuras de manera fácil y profesional.</p>
-            
-            <div class="code-container">
-                <p>Para completar tu registro, verifica tu cuenta con este código:</p>
+        <div class="content">
+            <div class="welcome-message">
+                <p>Hola <strong>{{ name }}</strong>,</p>
+                <p>¡Gracias por unirte a {{ app_name }}! Estamos emocionados de tenerte como parte de nuestra comunidad de viajeros.</p>
+            </div>
+
+            <div class="verification-box">
+                <div class="code-label">Tu código de verificación es:</div>
                 <div class="verification-code">{{ verification_code }}</div>
+                <div class="expiry-notice">⏰ Este código expira en 24 horas</div>
             </div>
-            
-            <div class="alert alert-warning">
-                <strong>Importante:</strong> Este código expira en 24 horas por seguridad.
+
+            <div class="instructions">
+                <h3>¿Cómo verificar tu cuenta?</h3>
+                <p>1. Ve a la página de verificación en tu aplicación</p>
+                <p>2. Introduce el código de 6 dígitos mostrado arriba</p>
+                <p>3. ¡Listo! Tu cuenta estará verificada y podrás comenzar a planificar tus viajes</p>
             </div>
-            
-            <p>Una vez verificada tu cuenta podrás:</p>
-            <div class="features-list">
-                <ul>
-                    <li>Crear y planificar viajes increíbles</li>
-                    <li>Invitar amigos a tus aventuras</li>
-                    <li>Dividir gastos de manera fácil</li>
-                    <li>Compartir fotos y momentos</li>
-                    <li>Acceder desde cualquier dispositivo</li>
-                </ul>
-            </div>
-            
-            <p>Si no creaste esta cuenta, puedes ignorar este email de manera segura.</p>
-        </div>
-        
-        <div class="email-footer">
-            <p>&copy; 2025 Voyaj. Todos los derechos reservados.</p>
-            <p>
-                <a href="#">Términos de Servicio</a> | 
-                <a href="#">Política de Privacidad</a> | 
-                <a href="#">Soporte</a>
+
+            <div class="divider"></div>
+
+            <p style="color: #6b7280; font-size: 14px;">
+                Si no solicitaste esta cuenta, puedes ignorar este correo de forma segura. 
+                Tu dirección de correo no será utilizada para crear una cuenta sin tu confirmación.
             </p>
+        </div>
+
+        <div class="footer">
+            <p>Este correo fue enviado por {{ app_name }}</p>
+            <p>Si tienes preguntas, no dudes en contactarnos.</p>
+            <p>¡Felices viajes! ✈️</p>
         </div>
     </div>
 </body>

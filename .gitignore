@@ -14,6 +14,7 @@ venv/
 !.env.example
 
 # Archivos específicos
+postman_collections/
 create.py
 inicializar.md
 

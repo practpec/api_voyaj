@@ -1,11 +1,10 @@
+# src/modules/users/domain/User.py
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from uuid import uuid4
-from passlib.context import CryptContext
+import bcrypt
 import secrets
 import string
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 class User:
     def __init__(
@@ -60,20 +59,71 @@ class User:
         self.codigo_recuperacion_password_expira = codigo_recuperacion_password_expira
 
     def _hash_password(self, password: str) -> str:
-        return pwd_context.hash(password)
+        """Hashear contraseña usando bcrypt directamente"""
+        password_bytes = password.encode('utf-8')
+        salt = bcrypt.gensalt()
+        return bcrypt.hashpw(password_bytes, salt).decode('utf-8')
 
     def _generate_secure_code(self, length: int = 6) -> str:
         """Generar código seguro de verificación"""
         return ''.join(secrets.choice(string.digits) for _ in range(length))
 
     def verify_password(self, password: str) -> bool:
-        return pwd_context.verify(password, self._contrasena_hash)
+        """Verificar contraseña"""
+        password_bytes = password.encode('utf-8')
+        hash_bytes = self._contrasena_hash.encode('utf-8')
+        return bcrypt.checkpw(password_bytes, hash_bytes)
 
     def update_password(self, new_password: str) -> None:
+        """Actualizar contraseña"""
         self._contrasena_hash = self._hash_password(new_password)
         self.actualizado_en = datetime.utcnow()
 
+    def generate_email_verification_code(self) -> str:
+        """Generar código de verificación de email"""
+        code = self._generate_secure_code(6)
+        self.codigo_verificacion_email = code
+        self.codigo_verificacion_email_expira = datetime.utcnow() + timedelta(hours=24)
+        self.actualizado_en = datetime.utcnow()
+        return code
+
+    def verify_email_code(self, code: str) -> bool:
+        """Verificar código de email y marcar como verificado"""
+        if (self.codigo_verificacion_email == code and 
+            self.codigo_verificacion_email_expira and
+            datetime.utcnow() <= self.codigo_verificacion_email_expira):
+            
+            self.email_verificado = True
+            self.codigo_verificacion_email = None
+            self.codigo_verificacion_email_expira = None
+            self.actualizado_en = datetime.utcnow()
+            return True
+        
+        return False
+
+    def generate_password_reset_code(self) -> str:
+        """Generar código de recuperación de contraseña"""
+        code = self._generate_secure_code(8)
+        self.codigo_recuperacion_password = code
+        self.codigo_recuperacion_password_expira = datetime.utcnow() + timedelta(hours=1)
+        self.actualizado_en = datetime.utcnow()
+        return code
+
+    def reset_password_with_code(self, code: str, new_password: str) -> bool:
+        """Resetear contraseña con código de verificación"""
+        if (self.codigo_recuperacion_password == code and 
+            self.codigo_recuperacion_password_expira and
+            datetime.utcnow() <= self.codigo_recuperacion_password_expira):
+            
+            self.update_password(new_password)
+            self.codigo_recuperacion_password = None
+            self.codigo_recuperacion_password_expira = None
+            return True
+        
+        return False
+
     def update_profile(self, nombre: Optional[str] = None, url_foto_perfil: Optional[str] = None) -> None:
+        """Actualizar perfil básico"""
         if nombre is not None:
             self.nombre = nombre
         if url_foto_perfil is not None:
@@ -88,6 +138,7 @@ class User:
         fecha_nacimiento: Optional[datetime] = None,
         biografia: Optional[str] = None
     ) -> None:
+        """Actualizar perfil extendido"""
         if telefono is not None:
             self.telefono = telefono
         if pais is not None:
@@ -100,92 +151,38 @@ class User:
             self.biografia = biografia
         self.actualizado_en = datetime.utcnow()
 
-    def generate_email_verification_code(self) -> str:
-        """Generar código de verificación de email"""
-        code = self._generate_secure_code(6)
-        expires_at = datetime.utcnow() + timedelta(hours=24)
-        
-        self.codigo_verificacion_email = code
-        self.codigo_verificacion_email_expira = expires_at
-        self.actualizado_en = datetime.utcnow()
-        
-        return code
-
-    def verify_email_code(self, code: str) -> bool:
-        """Verificar código de email"""
-        if not self.codigo_verificacion_email:
-            return False
-        
-        if (not self.codigo_verificacion_email_expira or 
-            self.codigo_verificacion_email_expira < datetime.utcnow()):
-            return False
-        
-        if self.codigo_verificacion_email != code:
-            return False
-        
-        # Marcar email como verificado y limpiar código
-        self.email_verificado = True
-        self.codigo_verificacion_email = None
-        self.codigo_verificacion_email_expira = None
-        self.actualizado_en = datetime.utcnow()
-        
-        return True
-
-    def generate_password_reset_code(self) -> str:
-        """Generar código de recuperación de contraseña"""
-        code = self._generate_secure_code(6)
-        expires_at = datetime.utcnow() + timedelta(minutes=10)
-        
-        self.codigo_recuperacion_password = code
-        self.codigo_recuperacion_password_expira = expires_at
-        self.actualizado_en = datetime.utcnow()
-        
-        return code
-
-    def verify_password_reset_code(self, code: str) -> bool:
-        """Verificar código de recuperación de contraseña"""
-        if not self.codigo_recuperacion_password:
-            return False
-        
-        if (not self.codigo_recuperacion_password_expira or 
-            self.codigo_recuperacion_password_expira < datetime.utcnow()):
-            return False
-        
-        if self.codigo_recuperacion_password != code:
-            return False
-        
-        return True
-
-    def reset_password_with_code(self, code: str, new_password: str) -> bool:
-        """Resetear contraseña usando código de verificación"""
-        if not self.verify_password_reset_code(code):
-            return False
-        
-        # Actualizar contraseña y limpiar código
-        self.update_password(new_password)
-        self.codigo_recuperacion_password = None
-        self.codigo_recuperacion_password_expira = None
-        self.actualizado_en = datetime.utcnow()
-        
-        return True
-
-    def verify_email(self) -> None:
-        self.email_verificado = True
+    def update_preferences(self, preferences: Dict[str, Any]) -> None:
+        """Actualizar preferencias del usuario"""
+        self.preferencias.update(preferences)
         self.actualizado_en = datetime.utcnow()
 
-    def update_last_access(self) -> None:
-        self.ultimo_acceso = datetime.utcnow()
+    def deactivate(self) -> None:
+        """Desactivar usuario"""
+        self.esta_activo = False
+        self.actualizado_en = datetime.utcnow()
+
+    def reactivate(self) -> None:
+        """Reactivar usuario"""
+        self.esta_activo = True
+        self.actualizado_en = datetime.utcnow()
 
     def soft_delete(self) -> None:
+        """Eliminación lógica del usuario"""
         self.eliminado = True
         self.esta_activo = False
         self.actualizado_en = datetime.utcnow()
 
+    def update_last_access(self) -> None:
+        """Actualizar último acceso"""
+        self.ultimo_acceso = datetime.utcnow()
+
     def to_dict(self) -> Dict[str, Any]:
+        """Convertir a diccionario para almacenamiento"""
         return {
             "id": self.id,
             "correo_electronico": self.correo_electronico,
             "nombre": self.nombre,
+            "contrasena_hash": self._contrasena_hash,
             "url_foto_perfil": self.url_foto_perfil,
             "telefono": self.telefono,
             "pais": self.pais,
@@ -207,6 +204,7 @@ class User:
         }
 
     def to_public_dict(self) -> Dict[str, Any]:
+        """Convertir a diccionario público (sin datos sensibles)"""
         return {
             "id": self.id,
             "correo_electronico": self.correo_electronico,
@@ -217,6 +215,7 @@ class User:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "User":
+        """Crear instancia desde diccionario"""
         user = cls.__new__(cls)
         user.id = data["id"]
         user.correo_electronico = data["correo_electronico"]
