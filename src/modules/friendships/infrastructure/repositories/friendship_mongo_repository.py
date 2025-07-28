@@ -1,50 +1,34 @@
-from typing import List, Optional, Any
-from motor.motor_asyncio import AsyncIOMotorCollection
-from pymongo import ASCENDING, DESCENDING
+# src/modules/friendships/infrastructure/repositories/friendship_mongo_repository.py
+from typing import List, Optional, Tuple
+from pymongo import DESCENDING
 
-from ...domain.friendship import Friendship, FriendshipData
-from ...domain.interfaces.friendship_repository import IFriendshipRepository
+from ...domain.Friendship import Friendship, FriendshipData
+from ...domain.interfaces.IFriendshipRepository import IFriendshipRepository
 from shared.database.Connection import DatabaseConnection
-from shared.constants import FRIENDSHIP_STATUS
 from shared.errors.custom_errors import DatabaseError
+from shared.constants import FRIENDSHIP_STATUS
 
 
 class FriendshipMongoRepository(IFriendshipRepository):
     def __init__(self):
         self._db = DatabaseConnection.get_database()
-        self._collection: AsyncIOMotorCollection = self._db.friendships
-        self._create_indexes()
+        self._collection = self._db.friendships
 
-    def _create_indexes(self) -> None:
-        """Crear índices para optimizar consultas"""
-        # Índice compuesto para buscar relaciones entre usuarios
-        self._collection.create_index([
-            ("user_id", ASCENDING),
-            ("friend_id", ASCENDING),
-            ("status", ASCENDING),
-            ("is_deleted", ASCENDING)
-        ])
+    def _document_to_friendship_data(self, doc) -> FriendshipData:
+        """Convertir documento MongoDB a FriendshipData"""
+        # Convertir _id a id si existe
+        if "_id" in doc:
+            doc["id"] = doc.pop("_id")
         
-        # Índice para buscar solicitudes recibidas
-        self._collection.create_index([
-            ("friend_id", ASCENDING),
-            ("status", ASCENDING),
-            ("is_deleted", ASCENDING)
-        ])
-        
-        # Índice para buscar solicitudes enviadas
-        self._collection.create_index([
-            ("user_id", ASCENDING),
-            ("status", ASCENDING),
-            ("is_deleted", ASCENDING)
-        ])
+        return FriendshipData(**doc)
 
     async def create(self, friendship: Friendship) -> Friendship:
         """Crear nueva amistad"""
         try:
             friendship_data = friendship.to_data()
             doc = {
-                "id": friendship_data.id,
+                "_id": friendship_data.id,  # MongoDB usa _id
+                "id": friendship_data.id,   # También mantener id para compatibilidad
                 "user_id": friendship_data.user_id,
                 "friend_id": friendship_data.friend_id,
                 "status": friendship_data.status,
@@ -63,11 +47,14 @@ class FriendshipMongoRepository(IFriendshipRepository):
         """Buscar amistad por ID"""
         try:
             doc = await self._collection.find_one({
-                "id": friendship_id,
+                "$or": [
+                    {"_id": friendship_id},
+                    {"id": friendship_id}
+                ],
                 "is_deleted": False
             })
             
-            return Friendship.from_data(FriendshipData(**doc)) if doc else None
+            return Friendship.from_data(self._document_to_friendship_data(doc)) if doc else None
             
         except Exception as error:
             raise DatabaseError(f"Error buscando amistad: {str(error)}")
@@ -83,7 +70,7 @@ class FriendshipMongoRepository(IFriendshipRepository):
             }
             
             await self._collection.update_one(
-                {"id": friendship_data.id},
+                {"$or": [{"_id": friendship_data.id}, {"id": friendship_data.id}]},
                 {"$set": update_doc}
             )
             
@@ -96,7 +83,7 @@ class FriendshipMongoRepository(IFriendshipRepository):
         """Eliminar amistad (soft delete)"""
         try:
             result = await self._collection.update_one(
-                {"id": friendship_id},
+                {"$or": [{"_id": friendship_id}, {"id": friendship_id}]},
                 {"$set": {"is_deleted": True}}
             )
             
@@ -116,51 +103,17 @@ class FriendshipMongoRepository(IFriendshipRepository):
                 "is_deleted": False
             })
             
-            return Friendship.from_data(FriendshipData(**doc)) if doc else None
+            return Friendship.from_data(self._document_to_friendship_data(doc)) if doc else None
             
         except Exception as error:
             raise DatabaseError(f"Error buscando amistad entre usuarios: {str(error)}")
-
-    async def find_accepted_between_users(self, user_id: str, friend_id: str) -> Optional[Friendship]:
-        """Buscar amistad aceptada entre dos usuarios"""
-        try:
-            doc = await self._collection.find_one({
-                "$or": [
-                    {"user_id": user_id, "friend_id": friend_id},
-                    {"user_id": friend_id, "friend_id": user_id}
-                ],
-                "status": FRIENDSHIP_STATUS["ACCEPTED"],
-                "is_deleted": False
-            })
-            
-            return Friendship.from_data(FriendshipData(**doc)) if doc else None
-            
-        except Exception as error:
-            raise DatabaseError(f"Error buscando amistad aceptada: {str(error)}")
-
-    async def find_pending_between_users(self, user_id: str, friend_id: str) -> Optional[Friendship]:
-        """Buscar solicitud pendiente entre dos usuarios"""
-        try:
-            doc = await self._collection.find_one({
-                "$or": [
-                    {"user_id": user_id, "friend_id": friend_id},
-                    {"user_id": friend_id, "friend_id": user_id}
-                ],
-                "status": FRIENDSHIP_STATUS["PENDING"],
-                "is_deleted": False
-            })
-            
-            return Friendship.from_data(FriendshipData(**doc)) if doc else None
-            
-        except Exception as error:
-            raise DatabaseError(f"Error buscando solicitud pendiente: {str(error)}")
 
     async def find_user_friends(
         self, 
         user_id: str, 
         page: int = 1, 
         limit: int = 20
-    ) -> tuple[List[Friendship], int]:
+    ) -> Tuple[List[Friendship], int]:
         """Buscar amigos aceptados de un usuario con paginación"""
         try:
             skip = (page - 1) * limit
@@ -181,19 +134,19 @@ class FriendshipMongoRepository(IFriendshipRepository):
             cursor = self._collection.find(query).skip(skip).limit(limit).sort("accepted_at", DESCENDING)
             docs = await cursor.to_list(length=limit)
             
-            friendships = [Friendship.from_data(FriendshipData(**doc)) for doc in docs]
+            friendships = [Friendship.from_data(self._document_to_friendship_data(doc)) for doc in docs]
             
             return friendships, total
             
         except Exception as error:
-            raise DatabaseError(f"Error obteniendo amigos: {str(error)}")
+            raise DatabaseError(f"Error obteniendo amigos del usuario: {str(error)}")
 
     async def find_pending_requests_received(
         self, 
         user_id: str, 
         page: int = 1, 
         limit: int = 20
-    ) -> tuple[List[Friendship], int]:
+    ) -> Tuple[List[Friendship], int]:
         """Buscar solicitudes pendientes recibidas por un usuario"""
         try:
             skip = (page - 1) * limit
@@ -209,7 +162,7 @@ class FriendshipMongoRepository(IFriendshipRepository):
             cursor = self._collection.find(query).skip(skip).limit(limit).sort("created_at", DESCENDING)
             docs = await cursor.to_list(length=limit)
             
-            friendships = [Friendship.from_data(FriendshipData(**doc)) for doc in docs]
+            friendships = [Friendship.from_data(self._document_to_friendship_data(doc)) for doc in docs]
             
             return friendships, total
             
@@ -221,7 +174,7 @@ class FriendshipMongoRepository(IFriendshipRepository):
         user_id: str, 
         page: int = 1, 
         limit: int = 20
-    ) -> tuple[List[Friendship], int]:
+    ) -> Tuple[List[Friendship], int]:
         """Buscar solicitudes pendientes enviadas por un usuario"""
         try:
             skip = (page - 1) * limit
@@ -237,7 +190,7 @@ class FriendshipMongoRepository(IFriendshipRepository):
             cursor = self._collection.find(query).skip(skip).limit(limit).sort("created_at", DESCENDING)
             docs = await cursor.to_list(length=limit)
             
-            friendships = [Friendship.from_data(FriendshipData(**doc)) for doc in docs]
+            friendships = [Friendship.from_data(self._document_to_friendship_data(doc)) for doc in docs]
             
             return friendships, total
             
@@ -308,3 +261,51 @@ class FriendshipMongoRepository(IFriendshipRepository):
             
         except Exception as error:
             raise DatabaseError(f"Error obteniendo IDs de amigos: {str(error)}")
+
+    async def get_all_users_except(self, user_id: str, limit: int = 10) -> List[str]:
+        """Obtener usuarios que no son amigos para sugerencias"""
+        try:
+            # Obtener amigos actuales
+            current_friends = await self.find_accepted_friends_ids(user_id)
+            
+            # Obtener usuarios que tienen solicitudes pendientes
+            pending_users = set()
+            
+            # Solicitudes enviadas
+            sent_cursor = self._collection.find({
+                "user_id": user_id,
+                "status": FRIENDSHIP_STATUS["PENDING"],
+                "is_deleted": False
+            }, {"friend_id": 1})
+            sent_docs = await sent_cursor.to_list(length=None)
+            for doc in sent_docs:
+                pending_users.add(doc["friend_id"])
+            
+            # Solicitudes recibidas
+            received_cursor = self._collection.find({
+                "friend_id": user_id,
+                "status": FRIENDSHIP_STATUS["PENDING"],
+                "is_deleted": False
+            }, {"user_id": 1})
+            received_docs = await received_cursor.to_list(length=None)
+            for doc in received_docs:
+                pending_users.add(doc["user_id"])
+            
+            # Usuarios a excluir
+            excluded_users = set(current_friends) | pending_users | {user_id}
+            
+            # Buscar usuarios en la colección de usuarios
+            # La colección users usa _id como campo principal
+            users_collection = self._db.users
+            cursor = users_collection.find({
+                "_id": {"$nin": list(excluded_users)},
+                "esta_activo": True,
+                "email_verificado": True,
+                "eliminado": False
+            }, {"_id": 1}).limit(limit)
+            
+            user_docs = await cursor.to_list(length=limit)
+            return [doc["_id"] for doc in user_docs]
+            
+        except Exception as error:
+            raise DatabaseError(f"Error obteniendo usuarios sugeridos: {str(error)}")

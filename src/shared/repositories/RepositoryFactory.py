@@ -23,10 +23,12 @@ class RepositoryFactory:
         if 'user' not in cls._instances:
             cls._instances['user'] = UserMongoRepository()
         return cls._instances['user']
-    
+
     @classmethod
-    def get_friendship_repository(cls) -> FriendshipMongoRepository:
+    def get_friendship_repository(cls):
+        """Obtener repositorio de amistades"""
         if 'friendship' not in cls._instances:
+            from modules.friendships.infrastructure.repositories.friendship_mongo_repository import FriendshipMongoRepository
             cls._instances['friendship'] = FriendshipMongoRepository()
         return cls._instances['friendship']
     

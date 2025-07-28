@@ -1,13 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from typing import Annotated, List
+# src/modules/friendships/infrastructure/controllers/friendship_controller.py
+from fastapi import HTTPException
+from typing import Dict
 
-from ...application.dtos.friendship_dto import (
-    SendFriendRequestDTO, 
-    FriendshipResponseDTO, 
-    FriendListResponseDTO,
-    FriendRequestResponseDTO,
-    FriendSuggestionDTO
-)
+from ...application.dtos.friendship_dto import SendFriendRequestDTO
 from ...application.use_cases.send_friend_request import SendFriendRequestUseCase
 from ...application.use_cases.accept_friend_request import AcceptFriendRequestUseCase
 from ...application.use_cases.reject_friend_request import RejectFriendRequestUseCase
@@ -15,10 +10,8 @@ from ...application.use_cases.remove_friendship import RemoveFriendshipUseCase
 from ...application.use_cases.get_friends import GetFriendsUseCase
 from ...application.use_cases.get_friend_requests import GetFriendRequestsUseCase
 from ...application.use_cases.get_friend_suggestions import GetFriendSuggestionsUseCase
-from ...application.use_cases.get_friendship_stats import GetFriendshipStatsUseCase, FriendshipStatsDTO
-from shared.middleware.AuthMiddleware import get_current_user
-from shared.utils.response_utils import SuccessResponse, PaginatedResponse
-from shared.utils.validation_utils import ValidationUtils
+from ...application.use_cases.get_friendship_stats import GetFriendshipStatsUseCase
+from shared.utils.response_utils import SuccessResponse
 
 
 class FriendshipController:
@@ -33,7 +26,6 @@ class FriendshipController:
         get_friend_suggestions_use_case: GetFriendSuggestionsUseCase,
         get_friendship_stats_use_case: GetFriendshipStatsUseCase
     ):
-        self.router = APIRouter(prefix="/api/friendships", tags=["friendships"])
         self._send_friend_request_use_case = send_friend_request_use_case
         self._accept_friend_request_use_case = accept_friend_request_use_case
         self._reject_friend_request_use_case = reject_friend_request_use_case
@@ -42,183 +34,155 @@ class FriendshipController:
         self._get_friend_requests_use_case = get_friend_requests_use_case
         self._get_friend_suggestions_use_case = get_friend_suggestions_use_case
         self._get_friendship_stats_use_case = get_friendship_stats_use_case
-        
-        self._register_routes()
 
-    def _register_routes(self):
-        """Registrar rutas del controlador"""
-        
-        @self.router.post("/request", response_model=SuccessResponse[FriendshipResponseDTO])
-        async def send_friend_request(
-            dto: SendFriendRequestDTO,
-            current_user: Annotated[dict, Depends(get_current_user)]
-        ):
-            """Enviar solicitud de amistad"""
-            try:
-                # Validar entrada
-                validation_result = ValidationUtils.validate_uuid(dto.friend_id)
-                if not validation_result["is_valid"]:
-                    raise HTTPException(status_code=400, detail="ID de usuario inválido")
+    async def send_friend_request(self, dto: SendFriendRequestDTO, current_user: Dict):
+        """Enviar solicitud de amistad"""
+        try:
+            print(f"[DEBUG] send_friend_request - dto: {dto}")
+            print(f"[DEBUG] send_friend_request - friend_id: {dto.friend_id}")
+            print(f"[DEBUG] send_friend_request - current_user: {current_user}")
+            
+            # Validación básica sin ValidationUtils
+            if not dto.friend_id or len(dto.friend_id) < 10:
+                raise HTTPException(status_code=400, detail="ID de usuario inválido")
 
-                result = await self._send_friend_request_use_case.execute(dto, current_user["id"])
-                
-                return SuccessResponse(
-                    data=result,
-                    message="Solicitud de amistad enviada exitosamente"
-                )
-                
-            except ValueError as e:
-                raise HTTPException(status_code=400, detail=str(e))
-            except Exception as e:
-                raise HTTPException(status_code=500, detail="Error interno del servidor")
+            # Usar sub en lugar de id para tokens JWT
+            user_id = current_user.get("sub") or current_user.get("id")
+            print(f"[DEBUG] send_friend_request - user_id extracted: {user_id}")
+            
+            print("[DEBUG] send_friend_request - Calling use case...")
+            result = await self._send_friend_request_use_case.execute(dto, user_id)
+            print(f"[DEBUG] send_friend_request - Use case result: {result}")
+            
+            return SuccessResponse(
+                data=result,
+                message="Solicitud de amistad enviada exitosamente"
+            )
+            
+        except ValueError as e:
+            print(f"[ERROR] send_friend_request - ValueError: {str(e)}")
+            raise HTTPException(status_code=400, detail=str(e))
+        except Exception as e:
+            print(f"[ERROR] send_friend_request - Exception: {str(e)}")
+            print(f"[ERROR] send_friend_request - Exception type: {type(e)}")
+            import traceback
+            print(f"[ERROR] send_friend_request - Traceback: {traceback.format_exc()}")
+            raise HTTPException(status_code=500, detail=f"Error interno del servidor: {str(e)}")
 
-        @self.router.put("/{friendship_id}/accept", response_model=SuccessResponse[FriendshipResponseDTO])
-        async def accept_friend_request(
-            friendship_id: str,
-            current_user: Annotated[dict, Depends(get_current_user)]
-        ):
-            """Aceptar solicitud de amistad"""
-            try:
-                # Validar entrada
-                validation_result = ValidationUtils.validate_uuid(friendship_id)
-                if not validation_result["is_valid"]:
-                    raise HTTPException(status_code=400, detail="ID de solicitud inválido")
+    async def accept_friend_request(self, friendship_id: str, current_user: Dict):
+        """Aceptar solicitud de amistad"""
+        try:
+            # Validación básica sin ValidationUtils
+            if not friendship_id or len(friendship_id) < 10:
+                raise HTTPException(status_code=400, detail="ID de solicitud inválido")
 
-                result = await self._accept_friend_request_use_case.execute(friendship_id, current_user["id"])
-                
-                return SuccessResponse(
-                    data=result,
-                    message="Solicitud de amistad aceptada exitosamente"
-                )
-                
-            except ValueError as e:
-                raise HTTPException(status_code=400, detail=str(e))
-            except Exception as e:
-                raise HTTPException(status_code=500, detail="Error interno del servidor")
+            user_id = current_user.get("sub") or current_user.get("id")
+            result = await self._accept_friend_request_use_case.execute(friendship_id, user_id)
+            
+            return SuccessResponse(
+                data=result,
+                message="Solicitud de amistad aceptada exitosamente"
+            )
+            
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error interno del servidor: {str(e)}")
 
-        @self.router.get("/", response_model=PaginatedResponse[FriendListResponseDTO])
-        async def get_friends(
-            current_user: Annotated[dict, Depends(get_current_user)],
-            page: int = Query(1, ge=1, description="Número de página"),
-            limit: int = Query(20, ge=1, le=100, description="Elementos por página")
-        ):
-            """Obtener lista de amigos"""
-            try:
-                result = await self._get_friends_use_case.execute(current_user["id"], page, limit)
-                return result
-                
-            except Exception as e:
-                raise HTTPException(status_code=500, detail="Error interno del servidor")
+    async def reject_friend_request(self, friendship_id: str, current_user: Dict):
+        """Rechazar solicitud de amistad"""
+        try:
+            # Validación básica sin ValidationUtils
+            if not friendship_id or len(friendship_id) < 10:
+                raise HTTPException(status_code=400, detail="ID de solicitud inválido")
 
-        @self.router.put("/{friendship_id}/reject", response_model=SuccessResponse[FriendshipResponseDTO])
-        async def reject_friend_request(
-            friendship_id: str,
-            current_user: Annotated[dict, Depends(get_current_user)]
-        ):
-            """Rechazar solicitud de amistad"""
-            try:
-                validation_result = ValidationUtils.validate_uuid(friendship_id)
-                if not validation_result["is_valid"]:
-                    raise HTTPException(status_code=400, detail="ID de solicitud inválido")
+            user_id = current_user.get("sub") or current_user.get("id")
+            result = await self._reject_friend_request_use_case.execute(friendship_id, user_id)
+            
+            return SuccessResponse(
+                data=result,
+                message="Solicitud de amistad rechazada exitosamente"
+            )
+            
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error interno del servidor: {str(e)}")
 
-                result = await self._reject_friend_request_use_case.execute(friendship_id, current_user["id"])
-                
-                return SuccessResponse(
-                    data=result,
-                    message="Solicitud de amistad rechazada exitosamente"
-                )
-                
-            except ValueError as e:
-                raise HTTPException(status_code=400, detail=str(e))
-            except Exception as e:
-                raise HTTPException(status_code=500, detail="Error interno del servidor")
+    async def remove_friendship(self, friendship_id: str, current_user: Dict):
+        """Eliminar amistad"""
+        try:
+            # Validación básica sin ValidationUtils
+            if not friendship_id or len(friendship_id) < 10:
+                raise HTTPException(status_code=400, detail="ID de amistad inválido")
 
-        @self.router.delete("/{friendship_id}", response_model=SuccessResponse[bool])
-        async def remove_friendship(
-            friendship_id: str,
-            current_user: Annotated[dict, Depends(get_current_user)]
-        ):
-            """Eliminar amistad"""
-            try:
-                validation_result = ValidationUtils.validate_uuid(friendship_id)
-                if not validation_result["is_valid"]:
-                    raise HTTPException(status_code=400, detail="ID de amistad inválido")
+            user_id = current_user.get("sub") or current_user.get("id")
+            result = await self._remove_friendship_use_case.execute(friendship_id, user_id)
+            
+            return SuccessResponse(
+                data=result,
+                message="Amistad eliminada exitosamente"
+            )
+            
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error interno del servidor: {str(e)}")
 
-                result = await self._remove_friendship_use_case.execute(friendship_id, current_user["id"])
-                
-                return SuccessResponse(
-                    data=result,
-                    message="Amistad eliminada exitosamente"
-                )
-                
-            except ValueError as e:
-                raise HTTPException(status_code=400, detail=str(e))
-            except Exception as e:
-                raise HTTPException(status_code=500, detail="Error interno del servidor")
+    async def get_friends(self, current_user: Dict, page: int = 1, limit: int = 20):
+        """Obtener lista de amigos"""
+        try:
+            user_id = current_user.get("sub") or current_user.get("id")
+            result = await self._get_friends_use_case.execute(user_id, page, limit)
+            return result
+            
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error interno del servidor: {str(e)}")
 
-        @self.router.get("/requests/received", response_model=PaginatedResponse[FriendRequestResponseDTO])
-        async def get_received_requests(
-            current_user: Annotated[dict, Depends(get_current_user)],
-            page: int = Query(1, ge=1, description="Número de página"),
-            limit: int = Query(20, ge=1, le=100, description="Elementos por página")
-        ):
-            """Obtener solicitudes de amistad recibidas"""
-            try:
-                result = await self._get_friend_requests_use_case.execute_received(
-                    current_user["id"], page, limit
-                )
-                return result
-                
-            except Exception as e:
-                raise HTTPException(status_code=500, detail="Error interno del servidor")
+    async def get_received_requests(self, current_user: Dict, page: int = 1, limit: int = 20):
+        """Obtener solicitudes de amistad recibidas"""
+        try:
+            user_id = current_user.get("sub") or current_user.get("id")
+            result = await self._get_friend_requests_use_case.execute_received(user_id, page, limit)
+            return result
+            
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error interno del servidor: {str(e)}")
 
-        @self.router.get("/requests/sent", response_model=PaginatedResponse[FriendRequestResponseDTO])
-        async def get_sent_requests(
-            current_user: Annotated[dict, Depends(get_current_user)],
-            page: int = Query(1, ge=1, description="Número de página"),
-            limit: int = Query(20, ge=1, le=100, description="Elementos por página")
-        ):
-            """Obtener solicitudes de amistad enviadas"""
-            try:
-                result = await self._get_friend_requests_use_case.execute_sent(
-                    current_user["id"], page, limit
-                )
-                return result
-                
-            except Exception as e:
-                raise HTTPException(status_code=500, detail="Error interno del servidor")
+    async def get_sent_requests(self, current_user: Dict, page: int = 1, limit: int = 20):
+        """Obtener solicitudes de amistad enviadas"""
+        try:
+            user_id = current_user.get("sub") or current_user.get("id")
+            result = await self._get_friend_requests_use_case.execute_sent(user_id, page, limit)
+            return result
+            
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error interno del servidor: {str(e)}")
 
-        @self.router.get("/suggestions", response_model=SuccessResponse[List[FriendSuggestionDTO]])
-        async def get_friend_suggestions(
-            current_user: Annotated[dict, Depends(get_current_user)],
-            limit: int = Query(10, ge=1, le=50, description="Número de sugerencias")
-        ):
-            """Obtener sugerencias de amigos"""
-            try:
-                result = await self._get_friend_suggestions_use_case.execute(
-                    current_user["id"], limit
-                )
-                
-                return SuccessResponse(
-                    data=result,
-                    message="Sugerencias obtenidas exitosamente"
-                )
-                
-            except Exception as e:
-                raise HTTPException(status_code=500, detail="Error interno del servidor")
+    async def get_friend_suggestions(self, current_user: Dict, limit: int = 10):
+        """Obtener sugerencias de amigos"""
+        try:
+            user_id = current_user.get("sub") or current_user.get("id")
+            result = await self._get_friend_suggestions_use_case.execute(user_id, limit)
+            
+            return SuccessResponse(
+                data=result,
+                message="Sugerencias obtenidas exitosamente"
+            )
+            
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error interno del servidor: {str(e)}")
 
-        @self.router.get("/stats", response_model=SuccessResponse[FriendshipStatsDTO])
-        async def get_friendship_stats(
-            current_user: Annotated[dict, Depends(get_current_user)]
-        ):
-            """Obtener estadísticas de amistad"""
-            try:
-                result = await self._get_friendship_stats_use_case.execute(current_user["id"])
-                
-                return SuccessResponse(
-                    data=result,
-                    message="Estadísticas obtenidas exitosamente"
-                )
-                
-            except Exception as e:
-                raise HTTPException(status_code=500, detail="Error interno del servidor")
+    async def get_friendship_stats(self, current_user: Dict):
+        """Obtener estadísticas de amistad"""
+        try:
+            user_id = current_user.get("sub") or current_user.get("id")
+            result = await self._get_friendship_stats_use_case.execute(user_id)
+            
+            return SuccessResponse(
+                data=result,
+                message="Estadísticas obtenidas exitosamente"
+            )
+            
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error interno del servidor: {str(e)}")

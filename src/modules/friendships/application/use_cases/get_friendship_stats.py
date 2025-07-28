@@ -1,14 +1,6 @@
 # src/modules/friendships/application/use_cases/get_friendship_stats.py
-from dataclasses import dataclass
-from ...domain.interfaces.friendship_repository import IFriendshipRepository
-
-
-@dataclass
-class FriendshipStatsDTO:
-    total_friends: int
-    pending_requests_received: int
-    pending_requests_sent: int
-    mutual_friends_with_last_friend: int = 0
+from ..dtos.friendship_dto import FriendshipStatsDTO
+from ...domain.interfaces.IFriendshipRepository import IFriendshipRepository
 
 
 class GetFriendshipStatsUseCase:

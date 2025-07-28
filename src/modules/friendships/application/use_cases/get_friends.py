@@ -2,7 +2,7 @@
 from typing import List
 from ..dtos.friendship_dto import FriendListResponseDTO, FriendshipDTOMapper
 from ...domain.friendship_service import FriendshipService
-from ...domain.interfaces.friendship_repository import IFriendshipRepository
+from ...domain.interfaces.IFriendshipRepository import IFriendshipRepository
 from modules.users.domain.interfaces.IUserRepository import IUserRepository
 from shared.utils.pagination_utils import PaginatedResponse
 
@@ -58,7 +58,7 @@ class GetFriendsUseCase:
             # Mapear a DTO de respuesta
             friend_response = FriendshipDTOMapper.to_friend_list_response(
                 friendship.to_public_data(),
-                friend_user.to_public_data(),
+                friend_user.to_public_dict(),
                 mutual_friends_count
             )
             

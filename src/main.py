@@ -11,7 +11,7 @@ sys.path.append(str(Path(__file__).parent))
 
 # Import existing modules
 from modules.users.infrastructure.routes.UserRoutes import router as user_router
-from modules.friendships.infrastructure.routes.FriendshipRoutes import router as friendship_router
+from modules.friendships.infrastructure.routes.friendship_routes import router as friendship_router
 from modules.trips.infrastructure.routes.trip_routes import router as trip_router
 from modules.days.infrastructure.routes.day_routes import router as day_router
 from modules.activities.infrastructure.routes.activity_routes import router as activity_router

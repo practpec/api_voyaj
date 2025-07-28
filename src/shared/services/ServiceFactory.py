@@ -34,11 +34,10 @@ class ServiceFactory:
             from modules.friendships.domain.friendship_service import FriendshipService
             
             friendship_repo = RepositoryFactory.get_friendship_repository()
-            user_repo = RepositoryFactory.get_user_repository()
             
+            # FriendshipService solo necesita friendship_repository
             cls._instances['friendship'] = FriendshipService(
-                friendship_repository=friendship_repo,
-                user_repository=user_repo
+                friendship_repository=friendship_repo
             )
         return cls._instances['friendship']
     

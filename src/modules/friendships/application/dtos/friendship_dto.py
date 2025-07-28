@@ -1,7 +1,8 @@
+# src/modules/friendships/application/dtos/friendship_dto.py
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional, Any, Dict
-from ...domain.friendship import FriendshipData
+from ...domain.Friendship import FriendshipData
 
 
 @dataclass
@@ -50,7 +51,14 @@ class FriendSuggestionDTO:
     email: str
     profile_photo_url: Optional[str]
     mutual_friends_count: int
-    connection_reason: str = "Amigos en común"
+    connection_reason: str = "Usuario recomendado"
+
+
+@dataclass
+class FriendshipStatsDTO:
+    total_friends: int
+    pending_requests_received: int
+    pending_requests_sent: int
 
 
 class FriendshipDTOMapper:
@@ -109,8 +117,8 @@ class FriendshipDTOMapper:
     @staticmethod
     def to_friend_suggestion(
         user_info: Dict[str, Any],
-        mutual_friends_count: int,
-        connection_reason: str = "Amigos en común"
+        mutual_friends_count: int = 0,
+        connection_reason: str = "Usuario recomendado"
     ) -> FriendSuggestionDTO:
         return FriendSuggestionDTO(
             id=user_info.get("id"),

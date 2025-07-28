@@ -1,4 +1,3 @@
-# src/shared/constants.py
 
 # Estados de usuario
 USER_STATUS = {

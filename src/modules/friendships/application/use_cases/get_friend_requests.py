@@ -2,7 +2,7 @@
 from typing import List
 from ..dtos.friendship_dto import FriendRequestResponseDTO, FriendshipDTOMapper
 from ...domain.friendship_service import FriendshipService
-from ...domain.interfaces.friendship_repository import IFriendshipRepository
+from ...domain.interfaces.IFriendshipRepository import IFriendshipRepository
 from modules.users.domain.interfaces.IUserRepository import IUserRepository
 from shared.utils.pagination_utils import PaginatedResponse
 
@@ -57,7 +57,7 @@ class GetFriendRequestsUseCase:
             # Mapear a DTO de respuesta
             request_response = FriendshipDTOMapper.to_friend_request_response(
                 friendship.to_public_data(),
-                requester_user.to_public_data(),
+                requester_user.to_public_dict(),
                 mutual_friends_count
             )
             
@@ -109,11 +109,16 @@ class GetFriendRequestsUseCase:
                 friendship.friend_id
             )
 
-            # Mapear a DTO de respuesta (usando recipient como "requester" para mostrar a quién se envió)
-            request_response = FriendshipDTOMapper.to_friend_request_response(
-                friendship.to_public_data(),
-                recipient_user.to_public_data(),
-                mutual_friends_count
+            # Mapear a DTO de respuesta usando requester_info para mantener consistencia
+            request_response = FriendRequestResponseDTO(
+                id=friendship.id,
+                requester_info=FriendshipDTOMapper.to_friend_request_response(
+                    friendship.to_public_data(),
+                    recipient_user.to_public_dict(),
+                    mutual_friends_count
+                ).requester_info,
+                request_date=friendship.created_at,
+                mutual_friends_count=mutual_friends_count
             )
             
             request_responses.append(request_response)

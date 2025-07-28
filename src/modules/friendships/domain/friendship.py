@@ -1,3 +1,4 @@
+# src/modules/friendships/domain/Friendship.py
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
@@ -88,6 +89,34 @@ class Friendship:
         """Restaurar amistad"""
         self._is_deleted = False
 
+    def is_pending(self) -> bool:
+        """Verificar si la solicitud está pendiente"""
+        return self._status == FRIENDSHIP_STATUS["PENDING"]
+
+    def is_accepted(self) -> bool:
+        """Verificar si la amistad está aceptada"""
+        return self._status == FRIENDSHIP_STATUS["ACCEPTED"]
+
+    def is_rejected(self) -> bool:
+        """Verificar si la solicitud fue rechazada"""
+        return self._status == FRIENDSHIP_STATUS["REJECTED"]
+
+    def to_data(self) -> FriendshipData:
+        """Convertir a datos para persistencia"""
+        return FriendshipData(
+            id=self._id,
+            user_id=self._user_id,
+            friend_id=self._friend_id,
+            status=self._status,
+            created_at=self._created_at,
+            accepted_at=self._accepted_at,
+            is_deleted=self._is_deleted
+        )
+
+    def to_public_data(self) -> FriendshipData:
+        """Convertir a datos públicos"""
+        return self.to_data()
+
     # Getters
     @property
     def id(self) -> str:
@@ -116,31 +145,3 @@ class Friendship:
     @property
     def is_deleted(self) -> bool:
         return self._is_deleted
-
-    def is_pending(self) -> bool:
-        """Verificar si la solicitud está pendiente"""
-        return self._status == FRIENDSHIP_STATUS["PENDING"]
-
-    def is_accepted(self) -> bool:
-        """Verificar si la amistad está aceptada"""
-        return self._status == FRIENDSHIP_STATUS["ACCEPTED"]
-
-    def is_rejected(self) -> bool:
-        """Verificar si la solicitud fue rechazada"""
-        return self._status == FRIENDSHIP_STATUS["REJECTED"]
-
-    def to_data(self) -> FriendshipData:
-        """Convertir a datos para persistencia"""
-        return FriendshipData(
-            id=self._id,
-            user_id=self._user_id,
-            friend_id=self._friend_id,
-            status=self._status,
-            created_at=self._created_at,
-            accepted_at=self._accepted_at,
-            is_deleted=self._is_deleted
-        )
-
-    def to_public_data(self) -> FriendshipData:
-        """Convertir a datos públicos"""
-        return self.to_data()

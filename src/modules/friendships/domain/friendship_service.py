@@ -1,7 +1,8 @@
-from typing import List, Optional
-from .friendship import Friendship
-from .interfaces.friendship_repository import IFriendshipRepository
-from shared.errors.custom_errors import NotFoundError, ValidationError, ConflictError
+# src/modules/friendships/domain/friendship_service.py
+from typing import List
+from .Friendship import Friendship
+from .interfaces.IFriendshipRepository import IFriendshipRepository
+from shared.errors.custom_errors import ValidationError, ConflictError
 
 
 class FriendshipService:
@@ -58,21 +59,23 @@ class FriendshipService:
         return len(mutual_friends)
 
     async def suggest_friends(self, user_id: str, limit: int = 10) -> List[str]:
-        """Sugerir amigos basado en amigos en común"""
+        """Sugerir amigos basado en usuarios que no son amigos"""
+        # Obtener amigos actuales
         user_friends = await self._friendship_repository.find_accepted_friends_ids(user_id)
         
-        if not user_friends:
-            return []
-
-        # Obtener amigos de amigos
-        potential_friends = set()
-        for friend_id in user_friends:
-            friend_friends = await self._friendship_repository.find_accepted_friends_ids(friend_id)
-            potential_friends.update(friend_friends)
-
-        # Remover al usuario actual y sus amigos existentes
-        potential_friends.discard(user_id)
-        potential_friends -= set(user_friends)
-
-        # Limitar resultados
-        return list(potential_friends)[:limit]
+        # Obtener todos los usuarios excepto el actual y sus amigos
+        suggested_users = await self._friendship_repository.get_all_users_except(user_id, limit * 3)
+        
+        # Filtrar usuarios que ya son amigos
+        potential_friends = []
+        for suggested_id in suggested_users:
+            if suggested_id not in user_friends:
+                # Verificar que no existe solicitud pendiente
+                existing_friendship = await self._friendship_repository.find_between_users(user_id, suggested_id)
+                if not existing_friendship:
+                    potential_friends.append(suggested_id)
+                    
+                    if len(potential_friends) >= limit:
+                        break
+        
+        return potential_friends
