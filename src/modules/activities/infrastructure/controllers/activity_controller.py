@@ -39,52 +39,7 @@ class ActivityController:
         self._reorder_activities_use_case = reorder_activities_use_case
         self._delete_activity_use_case = delete_activity_use_case
         
-        self._setup_routes()
-
-    def _setup_routes(self):
-        self.router.add_api_route(
-            "/",
-            self.create_activity,
-            methods=["POST"],
-            response_model=SuccessResponse[ActivityResponseDTO]
-        )
-        self.router.add_api_route(
-            "/{activity_id}",
-            self.get_activity,
-            methods=["GET"],
-            response_model=SuccessResponse[ActivityResponseDTO]
-        )
-        self.router.add_api_route(
-            "/{activity_id}",
-            self.update_activity,
-            methods=["PUT"],
-            response_model=SuccessResponse[ActivityResponseDTO]
-        )
-        self.router.add_api_route(
-            "/{activity_id}",
-            self.delete_activity,
-            methods=["DELETE"],
-            response_model=SuccessResponse[bool]
-        )
-        self.router.add_api_route(
-            "/{activity_id}/status",
-            self.change_activity_status,
-            methods=["PUT"],
-            response_model=SuccessResponse[ActivityResponseDTO]
-        )
-        self.router.add_api_route(
-            "/day/{day_id}",
-            self.get_day_activities,
-            methods=["GET"],
-            response_model=SuccessResponse[DayActivitiesResponseDTO]
-        )
-        self.router.add_api_route(
-            "/day/{day_id}/reorder",
-            self.reorder_activities,
-            methods=["PUT"],
-            response_model=SuccessResponse[ReorderResponseDTO]
-        )
-
+       
     async def create_activity(
         self,
         dto: CreateActivityDTO,
@@ -93,9 +48,10 @@ class ActivityController:
         """Crear nueva actividad"""
         try:
             validation_result = ValidationUtils.validate_uuid(dto.day_id)
+
             if not validation_result.is_valid:
                 raise HTTPException(status_code=400, detail="ID de día inválido")
-
+        
             result = await self._create_activity_use_case.execute(dto, current_user["sub"])
             
             return SuccessResponse(

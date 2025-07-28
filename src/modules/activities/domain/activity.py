@@ -80,8 +80,8 @@ class Activity:
         self._order = order
         self._created_by = created_by
         self._is_deleted = is_deleted
-        self._created_at = created_at or datetime.utcnow()
-        self._updated_at = updated_at or datetime.utcnow()
+        self._created_at = created_at
+        self._updated_at = updated_at
 
     @classmethod
     def create(

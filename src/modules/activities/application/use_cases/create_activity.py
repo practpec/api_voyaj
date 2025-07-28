@@ -33,9 +33,11 @@ class CreateActivityUseCase:
             dto.end_time
         )
 
+    
         # Obtener siguiente orden para el día
         next_order = await self._activity_repository.get_next_order(dto.day_id)
-
+        
+        
         activity = Activity.create(
             day_id=dto.day_id,
             title=dto.title,
@@ -48,8 +50,10 @@ class CreateActivityUseCase:
             category=dto.category,
             order=next_order
         )
-
+        
+        
         created_activity = await self._activity_repository.create(activity)
+        
 
         # Emitir evento
         event = ActivityCreatedEvent(
@@ -69,7 +73,7 @@ class CreateActivityUseCase:
 
         # Obtener información del creador
         creator_user = await self._user_repository.find_by_id(user_id)
-        creator_info = creator_user.to_public_data() if creator_user else None
+        creator_info = creator_user.to_public_dict() if creator_user else None
 
         return ActivityDTOMapper.to_activity_response(
             created_activity.to_public_data(),

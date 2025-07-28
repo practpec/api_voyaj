@@ -17,7 +17,6 @@ from ...application.use_cases.update_activity import UpdateActivityUseCase
 from ...application.use_cases.change_activity_status import ChangeActivityStatusUseCase
 from ...application.use_cases.reorder_activities import ReorderActivitiesUseCase
 from ...application.use_cases.delete_activity import DeleteActivityUseCase
-from ...domain.activity_service import ActivityService
 
 router = APIRouter()
 
@@ -28,11 +27,7 @@ def get_activity_controller():
     day_repo = RepositoryFactory.get_day_repository()
     event_bus = EventBus()
     
-    activity_service = ActivityService(
-        activity_repository=activity_repo,
-        day_repository=day_repo,
-        trip_member_repository=trip_member_repo
-    )
+    activity_service = ServiceFactory.get_activity_service()
     
     create_activity_use_case = CreateActivityUseCase(
         activity_repository=activity_repo,
@@ -44,6 +39,7 @@ def get_activity_controller():
     
     get_activity_use_case = GetActivityUseCase(
         activity_repository=activity_repo,
+        day_repository= day_repo,
         trip_member_repository=trip_member_repo,
         user_repository=user_repo,
         activity_service=activity_service
@@ -52,7 +48,6 @@ def get_activity_controller():
     get_day_activities_use_case = GetDayActivitiesUseCase(
         activity_repository=activity_repo,
         day_repository=day_repo,
-        trip_member_repository=trip_member_repo,
         activity_service=activity_service
     )
     
