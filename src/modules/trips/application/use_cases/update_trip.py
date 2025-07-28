@@ -1,3 +1,4 @@
+# src/modules/trips/application/use_cases/update_trip.py
 from ..dtos.trip_dto import UpdateTripDTO, TripResponseDTO, TripDTOMapper
 from ...domain.trip_service import TripService
 from ...domain.trip_events import TripUpdatedEvent
@@ -75,6 +76,7 @@ class UpdateTripUseCase:
         event = TripUpdatedEvent(
             trip_id=trip_id,
             owner_id=trip.owner_id,
+            updated_by=user_id,
             updated_fields=list(update_dict.keys())
         )
         await self._event_bus.publish(event)
@@ -86,7 +88,7 @@ class UpdateTripUseCase:
 
         return TripDTOMapper.to_trip_response(
             updated_trip.to_public_data(),
-            owner_user.to_public_data() if owner_user else None,
+            owner_user.to_public_dict() if owner_user else None,
             user_role,
             can_edit
         )

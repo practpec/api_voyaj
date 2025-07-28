@@ -1,3 +1,4 @@
+# src/shared/events/base_event.py
 from abc import ABC
 from dataclasses import dataclass
 from datetime import datetime
@@ -18,8 +19,8 @@ class BaseEvent(ABC):
 @dataclass
 class DomainEvent(ABC):
     """Clase base para todos los eventos de dominio"""
-    event_type: str
-    occurred_at: datetime
+    event_type: str = ""
+    occurred_at: datetime = None
     aggregate_id: Optional[str] = None
     aggregate_type: Optional[str] = None
     event_data: Optional[Any] = None

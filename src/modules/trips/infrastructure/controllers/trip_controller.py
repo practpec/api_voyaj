@@ -1,3 +1,4 @@
+# src/modules/trips/infrastructure/controllers/trip_controller.py
 from fastapi import APIRouter, Depends, HTTPException, Query, Path
 from typing import Annotated, Optional
 from datetime import datetime
@@ -160,8 +161,7 @@ class TripController:
         dto: CreateTripDTO,
         current_user: Annotated[dict, Depends(get_current_user)]
     ) -> SuccessResponse[TripResponseDTO]:
-        ValidationUtils.validate_required_fields(dto, ["title", "destination", "start_date", "end_date"])
-        
+        # FastAPI y Pydantic ya validan los campos requeridos del DTO
         result = await self._create_trip_use_case.execute(dto, current_user["sub"])
         
         return SuccessResponse(
@@ -209,8 +209,7 @@ class TripController:
         dto: InviteMemberDTO,
         current_user: Annotated[dict, Depends(get_current_user)]
     ) -> SuccessResponse[TripMemberResponseDTO]:
-        ValidationUtils.validate_required_fields(dto, ["user_id"])
-        
+        # FastAPI y Pydantic ya validan los campos requeridos del DTO
         result = await self._invite_user_to_trip_use_case.execute(
             trip_id, dto, current_user["sub"]
         )

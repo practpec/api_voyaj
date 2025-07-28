@@ -1,3 +1,4 @@
+# src/modules/trips/application/use_cases/get_trip.py
 from ..dtos.trip_dto import TripResponseDTO, TripDTOMapper
 from ...domain.trip_service import TripService
 from ...domain.interfaces.trip_repository import ITripRepository
@@ -37,7 +38,7 @@ class GetTripUseCase:
 
         return TripDTOMapper.to_trip_response(
             trip.to_public_data(),
-            owner_user.to_public_data() if owner_user else None,
+            owner_user.to_public_dict() if owner_user else None,
             user_role,
             can_edit
         )

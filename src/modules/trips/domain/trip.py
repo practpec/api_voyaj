@@ -1,3 +1,4 @@
+# src/modules/trips/domain/trip.py
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
@@ -195,19 +196,10 @@ class Trip:
             self._image_url = image_url
         if notes is not None:
             self._notes = notes
-        
         self._updated_at = datetime.utcnow()
 
-    def change_status(self, new_status: TripStatus):
-        self._status = new_status.value
-        self._updated_at = datetime.utcnow()
-
-    def complete_trip(self):
-        self._status = TripStatus.COMPLETED.value
-        self._updated_at = datetime.utcnow()
-
-    def cancel_trip(self):
-        self._status = TripStatus.CANCELLED.value
+    def change_status(self, status: TripStatus):
+        self._status = status.value
         self._updated_at = datetime.utcnow()
 
     def update_expenses(self, total_expenses: float):
@@ -278,6 +270,10 @@ class Trip:
     @property
     def is_group_trip(self) -> bool:
         return self._is_group_trip
+
+    @property
+    def is_public(self) -> bool:
+        return self._is_public
 
     @property
     def destination(self) -> str:

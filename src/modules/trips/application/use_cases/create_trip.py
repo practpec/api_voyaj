@@ -1,3 +1,4 @@
+# src/modules/trips/application/use_cases/create_trip.py
 from ..dtos.trip_dto import CreateTripDTO, TripResponseDTO, TripDTOMapper
 from ...domain.trip import Trip
 from ...domain.trip_member import TripMember
@@ -72,7 +73,7 @@ class CreateTripUseCase:
         
         return TripDTOMapper.to_trip_response(
             created_trip.to_public_data(),
-            owner_user.to_public_data() if owner_user else None,
+            owner_user.to_public_dict() if owner_user else None,
             owner_member.role,
             True
         )
