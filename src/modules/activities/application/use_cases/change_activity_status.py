@@ -107,7 +107,7 @@ class ChangeActivityStatusUseCase:
 
         # Obtener información del creador
         creator_user = await self._user_repository.find_by_id(activity.created_by)
-        creator_info = creator_user.to_public_dict() if creator_user else None
+        creator_info = creator_user.to_public_data() if creator_user else None
 
         return ActivityDTOMapper.to_activity_response(
             updated_activity.to_public_data(),

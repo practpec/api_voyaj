@@ -19,8 +19,7 @@ class DeleteActivityUseCase:
     async def execute(self, activity_id: str, user_id: str) -> bool:
         """Eliminar actividad existente"""
         activity = await self._activity_repository.find_by_id(activity_id)
-        # ✅ CORREGIDO: Verificar is_deleted en lugar de is_active()
-        if not activity or activity.is_deleted:
+        if not activity or not activity.is_active():
             raise NotFoundError("Actividad no encontrada")
 
         trip_id = await self._activity_service.validate_activity_deletion(activity, user_id)
