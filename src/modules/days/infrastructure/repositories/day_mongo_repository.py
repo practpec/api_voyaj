@@ -20,15 +20,9 @@ class DayMongoRepository(IDayRepository):
             day_data = day.to_public_data()
             document = self._day_to_document(day_data)
             
-            # Generar nuevo ObjectId si no existe
-            if "_id" not in document or not document["_id"]:
-                document["_id"] = ObjectId()
-            
-            result = await self._collection.insert_one(document)
-            
-            # Actualizar el day con el ID real
-            day_data.id = str(result.inserted_id)
-            return Day.from_data(day_data)
+            # ✅ CORREGIDO: No generar ObjectId, usar el ID string del dominio
+            await self._collection.insert_one(document)
+            return day
             
         except Exception as e:
             print(f"[ERROR] Error creando día: {str(e)}")
@@ -37,11 +31,9 @@ class DayMongoRepository(IDayRepository):
     async def find_by_id(self, day_id: str) -> Optional[Day]:
         """Buscar día por ID"""
         try:
-            if not ObjectId.is_valid(day_id):
-                return None
-                
+            # ✅ CORREGIDO: Buscar por string ID, no ObjectId
             document = await self._collection.find_one({
-                "_id": ObjectId(day_id),
+                "_id": day_id,
                 "is_deleted": {"$ne": True}
             })
             
@@ -57,12 +49,14 @@ class DayMongoRepository(IDayRepository):
             day_data.pop("_id", None)
             day_data["updated_at"] = datetime.utcnow()
             
+            # ✅ CORREGIDO: Usar string ID, no ObjectId
             await self._collection.update_one(
-                {"_id": ObjectId(day.id)},
+                {"_id": day.id},
                 {"$set": day_data}
             )
             
             return day
+            
         except Exception as e:
             print(f"[ERROR] Error actualizando día: {str(e)}")
             raise Exception(f"Error actualizando día: {str(e)}")
@@ -71,7 +65,7 @@ class DayMongoRepository(IDayRepository):
         """Eliminar día (soft delete)"""
         try:
             result = await self._collection.update_one(
-                {"_id": ObjectId(day_id)},
+                {"_id": day_id},  # ✅ CORREGIDO: string ID
                 {"$set": {"is_deleted": True, "updated_at": datetime.utcnow()}}
             )
             
@@ -83,27 +77,34 @@ class DayMongoRepository(IDayRepository):
     async def find_by_trip_id(self, trip_id: str) -> List[Day]:
         """Buscar días por viaje"""
         try:
-            query = {
+            cursor = self._collection.find({
                 "trip_id": trip_id,
                 "is_deleted": {"$ne": True}
-            }
+            }).sort("date", 1)
             
-            cursor = self._collection.find(query).sort("date", 1)
             documents = await cursor.to_list(length=None)
-            
             return [self._document_to_day(doc) for doc in documents if doc]
         except Exception as e:
-            print(f"[ERROR] Error buscando días del viaje: {str(e)}")
+            print(f"[ERROR] Error buscando días por viaje: {str(e)}")
             return []
 
     async def find_by_trip_id_ordered(self, trip_id: str) -> List[Day]:
         """Buscar días por viaje ordenados por fecha"""
-        return await self.find_by_trip_id(trip_id)
+        try:
+            cursor = self._collection.find({
+                "trip_id": trip_id,
+                "is_deleted": {"$ne": True}
+            }).sort("date", 1)
+            
+            documents = await cursor.to_list(length=None)
+            return [self._document_to_day(doc) for doc in documents if doc]
+        except Exception as e:
+            print(f"[ERROR] Error buscando días ordenados: {str(e)}")
+            return []
 
     async def find_by_trip_and_date(self, trip_id: str, day_date: date) -> Optional[Day]:
         """Buscar día específico por viaje y fecha"""
         try:
-            # ✅ Convertir date a datetime para la consulta
             if isinstance(day_date, date) and not isinstance(day_date, datetime):
                 date_query = datetime.combine(day_date, datetime.min.time())
             else:
@@ -111,13 +112,13 @@ class DayMongoRepository(IDayRepository):
                 
             document = await self._collection.find_one({
                 "trip_id": trip_id,
-                "date": date_query,  # ✅ Usar datetime para consulta
+                "date": date_query,
                 "is_deleted": {"$ne": True}
             })
             
             return self._document_to_day(document) if document else None
         except Exception as e:
-            print(f"[ERROR] Error buscando día por fecha: {str(e)}")
+            print(f"[ERROR] Error buscando por fecha: {str(e)}")
             return None
 
     async def find_by_date_range(
@@ -128,39 +129,38 @@ class DayMongoRepository(IDayRepository):
     ) -> List[Day]:
         """Buscar días en rango de fechas"""
         try:
-            # ✅ Convertir dates a datetime para MongoDB
-            start_datetime = datetime.combine(start_date, datetime.min.time()) if isinstance(start_date, date) else start_date
-            end_datetime = datetime.combine(end_date, datetime.max.time()) if isinstance(end_date, date) else end_date
-            
-            query = {
+            if isinstance(start_date, date) and not isinstance(start_date, datetime):
+                start_query = datetime.combine(start_date, datetime.min.time())
+            else:
+                start_query = start_date
+                
+            if isinstance(end_date, date) and not isinstance(end_date, datetime):
+                end_query = datetime.combine(end_date, datetime.max.time())
+            else:
+                end_query = end_date
+
+            cursor = self._collection.find({
                 "trip_id": trip_id,
-                "date": {
-                    "$gte": start_datetime,
-                    "$lte": end_datetime
-                },
+                "date": {"$gte": start_query, "$lte": end_query},
                 "is_deleted": {"$ne": True}
-            }
+            }).sort("date", 1)
             
-            cursor = self._collection.find(query).sort("date", 1)
             documents = await cursor.to_list(length=None)
-            
             return [self._document_to_day(doc) for doc in documents if doc]
         except Exception as e:
-            print(f"[ERROR] Error buscando días por rango: {str(e)}")
+            print(f"[ERROR] Error buscando por rango de fechas: {str(e)}")
             return []
 
     async def find_with_notes(self, trip_id: str) -> List[Day]:
         """Buscar días que tienen notas"""
         try:
-            query = {
+            cursor = self._collection.find({
                 "trip_id": trip_id,
                 "notes": {"$exists": True, "$ne": None, "$ne": ""},
                 "is_deleted": {"$ne": True}
-            }
+            }).sort("date", 1)
             
-            cursor = self._collection.find(query).sort("date", 1)
             documents = await cursor.to_list(length=None)
-            
             return [self._document_to_day(doc) for doc in documents if doc]
         except Exception as e:
             print(f"[ERROR] Error buscando días con notas: {str(e)}")
@@ -175,48 +175,18 @@ class DayMongoRepository(IDayRepository):
         """Buscar días con filtros y paginación"""
         try:
             query = {"is_deleted": {"$ne": True}}
+            query.update(filters)
             
-            # Aplicar filtros
-            if "trip_id" in filters:
-                query["trip_id"] = filters["trip_id"]
-            
-            if "has_notes" in filters:
-                if filters["has_notes"]:
-                    query["notes"] = {"$exists": True, "$ne": None, "$ne": ""}
-                else:
-                    query["$or"] = [
-                        {"notes": {"$exists": False}},
-                        {"notes": None},
-                        {"notes": ""}
-                    ]
-            
-            if "date_from" in filters:
-                date_from = filters["date_from"]
-                if isinstance(date_from, date) and not isinstance(date_from, datetime):
-                    date_from = datetime.combine(date_from, datetime.min.time())
-                query.setdefault("date", {})["$gte"] = date_from
-                
-            if "date_to" in filters:
-                date_to = filters["date_to"]
-                if isinstance(date_to, date) and not isinstance(date_to, datetime):
-                    date_to = datetime.combine(date_to, datetime.max.time())
-                query.setdefault("date", {})["$lte"] = date_to
-            
-            # Calcular skip para paginación
             skip = (page - 1) * limit
-            
-            # Ejecutar consulta con paginación
             cursor = self._collection.find(query).sort("date", 1).skip(skip).limit(limit)
-            documents = await cursor.to_list(length=limit)
             
-            # Contar total
+            documents = await cursor.to_list(length=limit)
             total = await self._collection.count_documents(query)
             
             days = [self._document_to_day(doc) for doc in documents if doc]
             return days, total
-            
         except Exception as e:
-            print(f"[ERROR] Error buscando días con filtros: {str(e)}")
+            print(f"[ERROR] Error buscando con filtros: {str(e)}")
             return [], 0
 
     async def count_by_trip_id(self, trip_id: str) -> int:
@@ -245,7 +215,6 @@ class DayMongoRepository(IDayRepository):
     async def exists_by_trip_and_date(self, trip_id: str, day_date: date) -> bool:
         """Verificar si existe día para fecha específica"""
         try:
-            # ✅ Convertir date a datetime para la consulta
             if isinstance(day_date, date) and not isinstance(day_date, datetime):
                 date_query = datetime.combine(day_date, datetime.min.time())
             else:
@@ -253,7 +222,7 @@ class DayMongoRepository(IDayRepository):
                 
             count = await self._collection.count_documents({
                 "trip_id": trip_id,
-                "date": date_query,  # ✅ Usar datetime para consulta
+                "date": date_query,
                 "is_deleted": {"$ne": True}
             })
             
@@ -284,35 +253,21 @@ class DayMongoRepository(IDayRepository):
             documents = []
             for day in days:
                 doc = self._day_to_document(day.to_public_data())
-                if "_id" not in doc or not doc["_id"]:
-                    doc["_id"] = ObjectId()
+                # ✅ CORREGIDO: No generar ObjectId, usar el ID del dominio
                 documents.append(doc)
             
-            result = await self._collection.insert_many(documents)
-            
-            # Actualizar los días con sus IDs reales
-            created_days = []
-            for i, day in enumerate(days):
-                day_data = day.to_public_data()
-                day_data.id = str(result.inserted_ids[i])
-                created_days.append(Day.from_data(day_data))
-            
-            return created_days
+            await self._collection.insert_many(documents)
+            return days  # ✅ CORREGIDO: Retornar los días originales
             
         except Exception as e:
-            print(f"[ERROR] Error en bulk_create: {str(e)}")
-            raise Exception(f"Error creando días en lote: {str(e)}")
+            print(f"[ERROR] Error en creación masiva: {str(e)}")
+            return []
 
     async def get_trip_day_statistics(self, trip_id: str) -> Dict[str, Any]:
         """Obtener estadísticas de días del viaje"""
         try:
             pipeline = [
-                {
-                    "$match": {
-                        "trip_id": trip_id,
-                        "is_deleted": {"$ne": True}
-                    }
-                },
+                {"$match": {"trip_id": trip_id, "is_deleted": {"$ne": True}}},
                 {
                     "$group": {
                         "_id": None,
@@ -320,89 +275,78 @@ class DayMongoRepository(IDayRepository):
                         "days_with_notes": {
                             "$sum": {
                                 "$cond": [
-                                    {
-                                        "$and": [
-                                            {"$ne": ["$notes", None]},
-                                            {"$ne": ["$notes", ""]}
-                                        ]
-                                    },
+                                    {"$and": [
+                                        {"$ne": ["$notes", None]},
+                                        {"$ne": ["$notes", ""]}
+                                    ]},
                                     1,
                                     0
                                 ]
                             }
-                        }
+                        },
+                        "first_date": {"$min": "$date"},
+                        "last_date": {"$max": "$date"}
                     }
                 }
             ]
             
-            result = await self._collection.aggregate(pipeline).to_list(length=1)
+            cursor = self._collection.aggregate(pipeline)
+            result = await cursor.to_list(length=1)
             
-            if not result:
+            if result:
+                stats = result[0]
+                stats.pop("_id", None)
+                return stats
+            else:
                 return {
                     "total_days": 0,
                     "days_with_notes": 0,
-                    "completion_percentage": 0.0
+                    "first_date": None,
+                    "last_date": None
                 }
-            
-            stats = result[0]
-            total = stats.get("total_days", 0)
-            with_notes = stats.get("days_with_notes", 0)
-            
-            return {
-                "total_days": total,
-                "days_with_notes": with_notes,
-                "completion_percentage": (with_notes / total * 100) if total > 0 else 0.0
-            }
-            
+                
         except Exception as e:
             print(f"[ERROR] Error obteniendo estadísticas: {str(e)}")
             return {
                 "total_days": 0,
                 "days_with_notes": 0,
-                "completion_percentage": 0.0
+                "first_date": None,
+                "last_date": None
             }
 
+    # MÉTODOS AUXILIARES
     def _day_to_document(self, day_data: DayData) -> Dict[str, Any]:
-        """Convertir DayData a documento MongoDB"""
-        # ✅ Convertir date a datetime para MongoDB
+        """Convertir entidad Day a documento MongoDB"""
+        # ✅ CORREGIDO: Convertir date a datetime para MongoDB
         date_value = day_data.date
         if isinstance(date_value, date) and not isinstance(date_value, datetime):
             date_value = datetime.combine(date_value, datetime.min.time())
         
-        doc = {
+        return {
+            "_id": day_data.id,
             "trip_id": day_data.trip_id,
-            "date": date_value,  # ✅ Usar datetime convertido
+            "date": date_value,  # ✅ datetime en lugar de date
             "notes": day_data.notes,
             "is_deleted": day_data.is_deleted or False,
             "created_at": day_data.created_at or datetime.utcnow(),
             "updated_at": day_data.updated_at or datetime.utcnow()
         }
-        
-        # Solo incluir _id si existe y es válido
-        if day_data.id and ObjectId.is_valid(day_data.id):
-            doc["_id"] = ObjectId(day_data.id)
-        
-        return {k: v for k, v in doc.items() if v is not None}
 
     def _document_to_day(self, document: Dict[str, Any]) -> Day:
-        """Convertir documento MongoDB a Day"""
-        try:
-            # ✅ Convertir datetime de vuelta a date si es necesario
-            date_value = document["date"]
-            if isinstance(date_value, datetime):
-                date_value = date_value.date()
-            
-            day_data = DayData(
-                id=str(document["_id"]),
-                trip_id=document["trip_id"],
-                date=date_value,  # ✅ Usar date convertido
-                notes=document.get("notes"),
-                is_deleted=document.get("is_deleted", False),
-                created_at=document.get("created_at", datetime.utcnow()),
-                updated_at=document.get("updated_at", datetime.utcnow())
-            )
-            
-            return Day.from_data(day_data)
-        except Exception as e:
-            print(f"[ERROR] Error convirtiendo documento a Day: {str(e)}")
-            raise Exception(f"Error procesando día: {str(e)}")
+        """Convertir documento MongoDB a entidad Day"""
+        # ✅ CORREGIDO: Convertir datetime de vuelta a date para el dominio
+        date_value = document.get("date")
+        if isinstance(date_value, datetime):
+            date_value = date_value.date()
+        
+        day_data = DayData(
+            id=str(document["_id"]),
+            trip_id=document.get("trip_id"),
+            date=date_value,  # ✅ date para el dominio
+            notes=document.get("notes"),
+            is_deleted=document.get("is_deleted", False),
+            created_at=document.get("created_at"),
+            updated_at=document.get("updated_at")
+        )
+        
+        return Day.from_data(day_data)

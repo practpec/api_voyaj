@@ -162,7 +162,8 @@ class ActivityController:
     async def get_day_activities(
         self,
         day_id: Annotated[str, Path()],
-        current_user: Annotated[dict, Depends(get_current_user)]
+        current_user: Annotated[dict, Depends(get_current_user)],
+        include_stats: bool = True
     ) -> SuccessResponse[DayActivitiesResponseDTO]:
         """Obtener todas las actividades de un día"""
         try:

@@ -1,3 +1,4 @@
+# src/modules/activities/application/use_cases/get_activity.py
 from ..dtos.activity_dto import ActivityResponseDTO, ActivityDTOMapper
 from ...domain.activity_service import ActivityService
 from ...domain.interfaces.activity_repository import IActivityRepository
@@ -25,7 +26,8 @@ class GetActivityUseCase:
     async def execute(self, activity_id: str, user_id: str) -> ActivityResponseDTO:
         """Obtener actividad específica por ID"""
         activity = await self._activity_repository.find_by_id(activity_id)
-        if not activity or not activity.is_active():
+        # ✅ CORREGIDO: Verificar is_deleted en lugar de is_active()
+        if not activity or activity.is_deleted:
             raise NotFoundError("Actividad no encontrada")
 
         # Verificar acceso del usuario
@@ -45,7 +47,8 @@ class GetActivityUseCase:
 
         # Obtener información del creador
         creator_user = await self._user_repository.find_by_id(activity.created_by)
-        creator_info = creator_user.to_public_data() if creator_user else None
+        # ✅ CORREGIDO: Usar to_public_dict() en lugar de to_public_data()
+        creator_info = creator_user.to_public_dict() if creator_user else None
 
         return ActivityDTOMapper.to_activity_response(
             activity.to_public_data(),

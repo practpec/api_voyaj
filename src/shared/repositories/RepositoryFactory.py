@@ -58,6 +58,7 @@ class RepositoryFactory:
     @classmethod
     def get_activity_repository(cls) -> ActivityMongoRepository:
         if 'activity' not in cls._instances:
+            from modules.activities.infrastructure.repositories.activity_mongo_repository import ActivityMongoRepository
             cls._instances['activity'] = ActivityMongoRepository()
         return cls._instances['activity']
     

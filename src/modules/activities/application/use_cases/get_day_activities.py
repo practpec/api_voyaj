@@ -20,7 +20,7 @@ class GetDayActivitiesUseCase:
     async def execute(self, day_id: str, user_id: str) -> DayActivitiesResponseDTO:
         """Obtener todas las actividades de un día específico"""
         day = await self._day_repository.find_by_id(day_id)
-        if not day or not day.is_active():
+        if not day or not day._is_deleted():
             raise NotFoundError("Día no encontrado")
 
         # Verificar acceso del usuario
