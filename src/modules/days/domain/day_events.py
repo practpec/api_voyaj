@@ -1,6 +1,7 @@
 # src/modules/days/domain/day_events.py
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import datetime
+from datetime import date as DateType  # Alias para evitar conflicto
 from typing import List, Optional, Dict, Any
 from shared.events.base_event import DomainEvent
 
@@ -10,7 +11,7 @@ class DayCreatedEvent(DomainEvent):
     """Evento emitido cuando se crea un día"""
     trip_id: str = ""
     day_id: str = ""
-    date: Optional[date] = None
+    date: Optional[DateType] = None
     created_by: str = ""
 
     def __post_init__(self):

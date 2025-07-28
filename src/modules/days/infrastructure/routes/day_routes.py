@@ -1,6 +1,4 @@
-# ====================================
-# 1. src/modules/days/infrastructure/routes/day_routes.py
-# ====================================
+
 from fastapi import APIRouter, Depends, Path
 from ..controllers.day_controller import DayController
 from ...application.dtos.day_dto import CreateDayDTO, UpdateDayDTO
