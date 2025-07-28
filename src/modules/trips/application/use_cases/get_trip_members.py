@@ -54,7 +54,7 @@ class GetTripMembersUseCase:
 
             member_response = TripMemberDTOMapper.to_member_list_response(
                 member.to_public_data(),
-                user_info.to_public_data(),
+                user_info.to_public_dict(),
                 can_edit_members,
                 can_remove
             )

@@ -39,12 +39,12 @@ class TripCreatedEvent(DomainEvent):
 class TripUpdatedEvent(DomainEvent):
     trip_id: str = ""
     owner_id: str = ""
-    updated_fields: Optional[dict] = None
+    updated_by: str = ""  # Agregar este campo
+    updated_fields: Optional[list] = None  # Cambiar a list en lugar de dict
     
     def __post_init__(self):
         self.event_type = TRIP_EVENT_TYPES["TRIP_UPDATED"]
         self.occurred_at = datetime.utcnow()
-
 
 @dataclass
 class TripDeletedEvent(DomainEvent):

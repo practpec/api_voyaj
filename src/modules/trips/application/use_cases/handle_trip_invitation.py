@@ -72,10 +72,10 @@ class HandleTripInvitationUseCase:
         updated_member = await self._trip_member_repository.update(member)
 
         user_info = await self._user_repository.find_by_id(member.user_id)
-        inviter_info = await self._user_repository.find_by_id(member.invited_by) if member.invited_by else None
+        inviter_info = await self._user_repository.find_by_id(member.id) if member.id else None
 
         return TripMemberDTOMapper.to_member_response(
             updated_member.to_public_data(),
-            user_info.to_public_data() if user_info else None,
-            inviter_info.to_public_data() if inviter_info else None
+            user_info.to_public_dict() if user_info else None,
+            inviter_info.to_public_dict() if inviter_info else None
         )

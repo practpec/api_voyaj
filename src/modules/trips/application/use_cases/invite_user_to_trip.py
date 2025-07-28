@@ -71,6 +71,6 @@ class InviteUserToTripUseCase:
 
         return TripMemberDTOMapper.to_member_response(
             created_member.to_public_data(),
-            invited_user.to_public_data() if invited_user else None,
-            inviter_user.to_public_data() if inviter_user else None
+            invited_user.to_public_dict() if invited_user else None,
+            inviter_user.to_public_dict() if inviter_user else None
         )

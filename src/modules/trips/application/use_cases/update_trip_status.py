@@ -1,3 +1,4 @@
+# src/modules/trips/application/use_cases/update_trip_status.py
 from ..dtos.trip_dto import UpdateTripStatusDTO, TripResponseDTO, TripDTOMapper
 from ...domain.trip_service import TripService
 from ...domain.trip_events import TripStatusChangedEvent, TripCompletedEvent, TripCancelledEvent
@@ -68,7 +69,7 @@ class UpdateTripStatusUseCase:
 
         return TripDTOMapper.to_trip_response(
             updated_trip.to_public_data(),
-            owner_user.to_public_data() if owner_user else None,
+            owner_user.to_public_dict() if owner_user else None,  # CORREGIDO: Removidos los paréntesis incorrectos
             user_role,
             can_edit
         )
