@@ -1,3 +1,4 @@
+# src/modules/days/application/use_cases/update_day.py
 from ..dtos.day_dto import UpdateDayDTO, DayResponseDTO, DayDTOMapper
 from ...domain.day_service import DayService
 from ...domain.day_events import DayUpdatedEvent, DayNotesUpdatedEvent
@@ -43,6 +44,7 @@ class UpdateDayUseCase:
         updated_day = await self._day_repository.update(day)
 
         if updated_fields:
+            # ✅ Crear evento con argumentos nombrados
             event = DayUpdatedEvent(
                 trip_id=day.trip_id,
                 day_id=day_id,
@@ -52,6 +54,7 @@ class UpdateDayUseCase:
             await self._event_bus.publish(event)
 
             if "notes" in updated_fields and old_notes != dto.notes:
+                # ✅ Crear evento con argumentos nombrados
                 notes_event = DayNotesUpdatedEvent(
                     trip_id=day.trip_id,
                     day_id=day_id,

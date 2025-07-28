@@ -51,6 +51,7 @@ class RepositoryFactory:
     @classmethod
     def get_day_repository(cls) -> DayMongoRepository:
         if 'day' not in cls._instances:
+            from modules.days.infrastructure.repositories.day_mongo_repository import DayMongoRepository
             cls._instances['day'] = DayMongoRepository()
         return cls._instances['day']
     

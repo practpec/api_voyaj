@@ -1,7 +1,9 @@
+# src/shared/utils/validation_utils.py - ACTUALIZAR ESTE MÉTODO
 import re
 import uuid
 from typing import Dict, Any, Optional, List
 from dataclasses import dataclass
+from bson import ObjectId
 
 
 @dataclass
@@ -66,19 +68,48 @@ class ValidationUtils:
 
     @staticmethod
     def validate_uuid(value: str) -> ValidationResult:
-        """Validar UUID"""
+        """Validar UUID v4 o MongoDB ObjectId"""
         errors = []
         
         if not value:
             errors.append("El ID es requerido")
         else:
+            # ✅ NUEVO: Intentar validar como UUID primero
             try:
                 uuid_obj = uuid.UUID(value)
                 # Verificar que es UUID v4
                 if uuid_obj.version != 4:
                     errors.append("Formato de UUID inválido")
             except ValueError:
-                errors.append("Formato de UUID inválido")
+                # ✅ NUEVO: Si falla UUID, intentar como ObjectId de MongoDB
+                try:
+                    if ObjectId.is_valid(value):
+                        # Es un ObjectId válido, lo aceptamos
+                        pass
+                    else:
+                        errors.append("Formato de ID inválido (ni UUID ni ObjectId)")
+                except Exception:
+                    errors.append("Formato de ID inválido")
+        
+        return ValidationResult(
+            is_valid=len(errors) == 0,
+            errors=errors,
+            value=value
+        )
+
+    @staticmethod
+    def validate_mongodb_id(value: str) -> ValidationResult:
+        """Validar específicamente MongoDB ObjectId"""
+        errors = []
+        
+        if not value:
+            errors.append("El ID es requerido")
+        else:
+            try:
+                if not ObjectId.is_valid(value):
+                    errors.append("Formato de ObjectId inválido")
+            except Exception:
+                errors.append("Formato de ObjectId inválido")
         
         return ValidationResult(
             is_valid=len(errors) == 0,

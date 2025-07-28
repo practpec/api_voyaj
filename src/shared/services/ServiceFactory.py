@@ -59,6 +59,23 @@ class ServiceFactory:
         return cls._instances['trip']
     
     @classmethod
+    def get_day_service(cls):
+        """Obtener servicio de días"""
+        if 'day' not in cls._instances:
+            from modules.days.domain.day_service import DayService
+            
+            day_repo = RepositoryFactory.get_day_repository()
+            trip_repo = RepositoryFactory.get_trip_repository()
+            trip_member_repo = RepositoryFactory.get_trip_member_repository()
+            
+            cls._instances['day'] = DayService(
+                day_repository=day_repo,
+                trip_repository=trip_repo,
+                trip_member_repository=trip_member_repo
+            )
+        return cls._instances['day']
+    
+    @classmethod
     def get_activity_service(cls):
         """Obtener servicio de actividades"""
         if 'activity' not in cls._instances:

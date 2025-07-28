@@ -1,9 +1,11 @@
+# ====================================
+# 1. src/modules/days/infrastructure/routes/day_routes.py
+# ====================================
 from fastapi import APIRouter, Depends, Path
 from ..controllers.day_controller import DayController
 from ...application.dtos.day_dto import CreateDayDTO, UpdateDayDTO
 from shared.middleware.AuthMiddleware import get_current_user
 from shared.repositories.RepositoryFactory import RepositoryFactory
-from shared.services.ServiceFactory import ServiceFactory
 from shared.events.event_bus import EventBus
 
 from ...application.use_cases.create_day import CreateDayUseCase
@@ -13,38 +15,42 @@ from ...application.use_cases.update_day import UpdateDayUseCase
 from ...application.use_cases.delete_day import DeleteDayUseCase
 from ...application.use_cases.generate_trip_days import GenerateTripDaysUseCase
 from ...domain.day_service import DayService
-from ...infrastructure.repositories.day_mongo_repository import DayMongoRepository
 
 router = APIRouter()
 
 def get_day_controller():
-    day_repo = DayMongoRepository()
-    trip_repo = RepositoryFactory.get_trip_repository()
-    trip_member_repo = RepositoryFactory.get_trip_member_repository()
-    event_bus = EventBus.get_instance()
-    
-    day_service = DayService(day_repo, trip_repo, trip_member_repo)
-    
-    return DayController(
-        create_day_use_case=CreateDayUseCase(
-            day_repo, trip_member_repo, day_service, event_bus
-        ),
-        get_day_use_case=GetDayUseCase(
-            day_repo, trip_member_repo, day_service
-        ),
-        get_trip_days_use_case=GetTripDaysUseCase(
-            day_repo, day_service
-        ),
-        update_day_use_case=UpdateDayUseCase(
-            day_repo, trip_member_repo, day_service, event_bus
-        ),
-        delete_day_use_case=DeleteDayUseCase(
-            day_repo, day_service, event_bus
-        ),
-        generate_trip_days_use_case=GenerateTripDaysUseCase(
-            day_repo, trip_member_repo, day_service, event_bus
+    """Factory para crear controlador de days con dependencias"""
+    try:
+        day_repo = RepositoryFactory.get_day_repository()
+        trip_repo = RepositoryFactory.get_trip_repository()
+        trip_member_repo = RepositoryFactory.get_trip_member_repository()
+        event_bus = EventBus.get_instance()
+        
+        day_service = DayService(day_repo, trip_repo, trip_member_repo)
+        
+        return DayController(
+            create_day_use_case=CreateDayUseCase(
+                day_repo, trip_member_repo, day_service, event_bus
+            ),
+            get_day_use_case=GetDayUseCase(
+                day_repo, trip_member_repo, day_service
+            ),
+            get_trip_days_use_case=GetTripDaysUseCase(
+                day_repo, day_service
+            ),
+            update_day_use_case=UpdateDayUseCase(
+                day_repo, trip_member_repo, day_service, event_bus
+            ),
+            delete_day_use_case=DeleteDayUseCase(
+                day_repo, day_service, event_bus
+            ),
+            generate_trip_days_use_case=GenerateTripDaysUseCase(
+                day_repo, trip_member_repo, day_service, event_bus
+            )
         )
-    )
+    except Exception as e:
+        print(f"[ERROR] Error creando day controller: {str(e)}")
+        raise Exception(f"Error inicializando controlador de días: {str(e)}")
 
 @router.post("/")
 async def create_day(

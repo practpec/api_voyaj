@@ -1,3 +1,4 @@
+# src/modules/days/application/use_cases/delete_day.py
 from ...domain.day_service import DayService
 from ...domain.day_events import DayDeletedEvent
 from ...domain.interfaces.day_repository import IDayRepository
@@ -27,6 +28,7 @@ class DeleteDayUseCase:
         day.soft_delete()
         await self._day_repository.update(day)
 
+        # ✅ Crear evento con argumentos nombrados
         event = DayDeletedEvent(
             trip_id=day.trip_id,
             day_id=day_id,

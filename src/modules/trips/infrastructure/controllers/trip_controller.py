@@ -1,4 +1,3 @@
-# src/modules/trips/infrastructure/controllers/trip_controller.py
 from fastapi import HTTPException
 from typing import Optional
 
@@ -95,6 +94,7 @@ class TripController:
         """Crear nuevo viaje"""
         try:
             result = await self._create_trip_use_case.execute(dto, current_user["sub"])
+            
             
             return SuccessResponse(
                 data=result,

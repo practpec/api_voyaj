@@ -1,3 +1,4 @@
+# src/modules/days/application/use_cases/create_day.py
 from ..dtos.day_dto import CreateDayDTO, DayResponseDTO, DayDTOMapper
 from ...domain.Day import Day
 from ...domain.day_service import DayService
@@ -36,6 +37,7 @@ class CreateDayUseCase:
 
         created_day = await self._day_repository.create(day)
 
+        # ✅ Crear evento con argumentos nombrados
         event = DayCreatedEvent(
             trip_id=dto.trip_id,
             day_id=created_day.id,

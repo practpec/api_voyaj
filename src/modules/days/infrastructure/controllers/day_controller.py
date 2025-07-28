@@ -83,6 +83,8 @@ class DayController:
     ) -> SuccessResponse[DayResponseDTO]:
         """Crear nuevo día en un viaje"""
         try:
+            print(f"[DEBUG] Creando día: {dto.trip_id}, {dto.date}")
+            
             validation_result = ValidationUtils.validate_uuid(dto.trip_id)
             if not validation_result.is_valid:
                 raise HTTPException(status_code=400, detail="ID de viaje inválido")
@@ -95,58 +97,11 @@ class DayController:
             )
             
         except ValueError as e:
+            print(f"[ERROR] ValueError en create_day: {str(e)}")
             raise HTTPException(status_code=400, detail=str(e))
         except Exception as e:
-            raise HTTPException(status_code=500, detail="Error interno del servidor")
-
-    async def get_trip_timeline(
-        self,
-        trip_id: Annotated[str, Path()],
-        current_user: Annotated[dict, Depends(get_current_user)]
-    ) -> SuccessResponse[TripTimelineResponseDTO]:
-        """Obtener timeline de días del viaje"""
-        try:
-            validation_result = ValidationUtils.validate_uuid(trip_id)
-            if not validation_result.is_valid:
-                raise HTTPException(status_code=400, detail="ID de viaje inválido")
-
-            result = await self._get_trip_days_use_case.execute(trip_id, current_user["sub"])
-            
-            return SuccessResponse(
-                data=result,
-                message="Timeline obtenido exitosamente"
-            )
-            
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e))
-        except Exception as e:
-            raise HTTPException(status_code=500, detail="Error interno del servidor")
-
-    async def generate_trip_days(
-        self,
-        trip_id: Annotated[str, Path()],
-        current_user: Annotated[dict, Depends(get_current_user)]
-    ) -> SuccessResponse[BulkCreateDaysResponseDTO]:
-        """Generar automáticamente todos los días del viaje"""
-        try:
-            validation_result = ValidationUtils.validate_uuid(trip_id)
-            if not validation_result.is_valid:
-                raise HTTPException(status_code=400, detail="ID de viaje inválido")
-
-            dto = GenerateTripDaysDTO(trip_id=trip_id)
-            result = await self._generate_trip_days_use_case.execute(dto, current_user["sub"])
-            
-            return SuccessResponse(
-                data=result,
-                message=f"Se generaron {result.total_created} días exitosamente"
-            )
-            
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e))
-        except Exception as e:
-            raise HTTPException(status_code=500, detail="Error interno del servidor")
-        except Exception as e:
-            raise HTTPException(status_code=500, detail="Error interno del servidor")
+            print(f"[ERROR] Exception en create_day: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
     async def get_day(
         self,
@@ -155,18 +110,25 @@ class DayController:
     ) -> SuccessResponse[DayResponseDTO]:
         """Obtener día específico"""
         try:
+            print(f"[DEBUG] Obteniendo día: {day_id}")
+            
             validation_result = ValidationUtils.validate_uuid(day_id)
             if not validation_result.is_valid:
                 raise HTTPException(status_code=400, detail="ID de día inválido")
 
             result = await self._get_day_use_case.execute(day_id, current_user["sub"])
             
-            return SuccessResponse(data=result)
+            return SuccessResponse(
+                data=result,
+                message="Día obtenido exitosamente"
+            )
             
         except ValueError as e:
+            print(f"[ERROR] ValueError en get_day: {str(e)}")
             raise HTTPException(status_code=400, detail=str(e))
         except Exception as e:
-            raise HTTPException(status_code=500, detail="Error interno del servidor")
+            print(f"[ERROR] Exception en get_day: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
     async def update_day(
         self,
@@ -176,6 +138,8 @@ class DayController:
     ) -> SuccessResponse[DayResponseDTO]:
         """Actualizar día existente"""
         try:
+            print(f"[DEBUG] Actualizando día: {day_id}")
+            
             validation_result = ValidationUtils.validate_uuid(day_id)
             if not validation_result.is_valid:
                 raise HTTPException(status_code=400, detail="ID de día inválido")
@@ -190,9 +154,11 @@ class DayController:
             )
             
         except ValueError as e:
+            print(f"[ERROR] ValueError en update_day: {str(e)}")
             raise HTTPException(status_code=400, detail=str(e))
         except Exception as e:
-            raise HTTPException(status_code=500, detail="Error interno del servidor")
+            print(f"[ERROR] Exception en update_day: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
     async def delete_day(
         self,
@@ -201,6 +167,8 @@ class DayController:
     ) -> SuccessResponse[bool]:
         """Eliminar día"""
         try:
+            print(f"[DEBUG] Eliminando día: {day_id}")
+            
             validation_result = ValidationUtils.validate_uuid(day_id)
             if not validation_result.is_valid:
                 raise HTTPException(status_code=400, detail="ID de día inválido")
@@ -213,4 +181,63 @@ class DayController:
             )
             
         except ValueError as e:
+            print(f"[ERROR] ValueError en delete_day: {str(e)}")
             raise HTTPException(status_code=400, detail=str(e))
+        except Exception as e:
+            print(f"[ERROR] Exception en delete_day: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+
+    async def get_trip_timeline(
+        self,
+        trip_id: Annotated[str, Path()],
+        current_user: Annotated[dict, Depends(get_current_user)]
+    ) -> SuccessResponse[TripTimelineResponseDTO]:
+        """Obtener timeline de días del viaje"""
+        try:
+            print(f"[DEBUG] Obteniendo timeline: {trip_id}")
+            
+            validation_result = ValidationUtils.validate_uuid(trip_id)
+            if not validation_result.is_valid:
+                raise HTTPException(status_code=400, detail="ID de viaje inválido")
+
+            result = await self._get_trip_days_use_case.execute(trip_id, current_user["sub"])
+            
+            return SuccessResponse(
+                data=result,
+                message="Timeline obtenido exitosamente"
+            )
+            
+        except ValueError as e:
+            print(f"[ERROR] ValueError en get_trip_timeline: {str(e)}")
+            raise HTTPException(status_code=400, detail=str(e))
+        except Exception as e:
+            print(f"[ERROR] Exception en get_trip_timeline: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+
+    async def generate_trip_days(
+        self,
+        trip_id: Annotated[str, Path()],
+        current_user: Annotated[dict, Depends(get_current_user)]
+    ) -> SuccessResponse[BulkCreateDaysResponseDTO]:
+        """Generar automáticamente todos los días del viaje"""
+        try:
+            print(f"[DEBUG] Generando días: {trip_id}")
+            
+            validation_result = ValidationUtils.validate_uuid(trip_id)
+            if not validation_result.is_valid:
+                raise HTTPException(status_code=400, detail="ID de viaje inválido")
+
+            dto = GenerateTripDaysDTO(trip_id=trip_id)
+            result = await self._generate_trip_days_use_case.execute(dto, current_user["sub"])
+            
+            return SuccessResponse(
+                data=result,
+                message=f"Se generaron {result.total_created} días exitosamente"
+            )
+            
+        except ValueError as e:
+            print(f"[ERROR] ValueError en generate_trip_days: {str(e)}")  
+            raise HTTPException(status_code=400, detail=str(e))
+        except Exception as e:
+            print(f"[ERROR] Exception en generate_trip_days: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
