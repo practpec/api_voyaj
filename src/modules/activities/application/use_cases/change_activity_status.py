@@ -1,15 +1,12 @@
 # src/modules/activities/application/use_cases/change_activity_status.py
 from ..dtos.activity_dto import ChangeActivityStatusDTO, ActivityResponseDTO, ActivityDTOMapper
-from ...domain.activity import ActivityStatus
 from ...domain.activity_service import ActivityService
-from ...domain.activity_events import (
-    ActivityStartedEvent, ActivityCompletedEvent, ActivityCancelledEvent, ActivityCostUpdatedEvent
-)
+from ...domain.activity_events import ActivityStatusChangedEvent, ActivityCompletedEvent
 from ...domain.interfaces.activity_repository import IActivityRepository
 from modules.trips.domain.interfaces.trip_member_repository import ITripMemberRepository
 from modules.users.domain.interfaces.IUserRepository import IUserRepository
 from shared.events.event_bus import EventBus
-from shared.errors.custom_errors import NotFoundError
+from shared.errors.custom_errors import NotFoundError, ForbiddenError
 
 
 class ChangeActivityStatusUseCase:
@@ -33,77 +30,58 @@ class ChangeActivityStatusUseCase:
         dto: ChangeActivityStatusDTO, 
         user_id: str
     ) -> ActivityResponseDTO:
-        """Cambiar estado de una actividad"""
+        """Cambiar estado de actividad"""
+        # Buscar actividad
         activity = await self._activity_repository.find_by_id(activity_id)
         if not activity or not activity.is_active():
             raise NotFoundError("Actividad no encontrada")
 
-        new_status = ActivityStatus(dto.new_status)
-        trip_id = await self._activity_service.validate_activity_status_change(
-            activity, user_id, new_status
+        # Verificar permisos
+        trip_member = await self._trip_member_repository.find_by_trip_and_user(
+            activity.trip_id, user_id
+        )
+        if not trip_member:
+            raise ForbiddenError("No tienes acceso a esta actividad")
+
+        # Validar cambio de estado
+        await self._activity_service.validate_status_change(activity, dto.status, user_id)
+
+        # Guardar estado anterior para eventos
+        old_status = activity.status
+
+        # Cambiar estado
+        activity.change_status(
+            new_status=dto.status,
+            notes=dto.notes,
+            actual_start_time=dto.actual_start_time,
+            actual_end_time=dto.actual_end_time,
+            actual_cost=dto.actual_cost
         )
 
-        # Cambiar estado según el tipo
-        if new_status == ActivityStatus.IN_PROGRESS:
-            activity.start_activity()
-            event = ActivityStartedEvent(
-                trip_id=trip_id,
-                day_id=activity.day_id,
-                activity_id=activity_id,
-                started_by=user_id
-            )
-        elif new_status == ActivityStatus.COMPLETED:
-            activity.complete_activity(dto.actual_cost)
-            event = ActivityCompletedEvent(
-                trip_id=trip_id,
-                day_id=activity.day_id,
-                activity_id=activity_id,
-                completed_by=user_id,
-                actual_cost=dto.actual_cost
-            )
-            # Si se especificó costo real, emitir evento adicional
-            if dto.actual_cost is not None:
-                cost_event = ActivityCostUpdatedEvent(
-                    trip_id=trip_id,
-                    day_id=activity.day_id,
-                    activity_id=activity_id,
-                    old_cost=activity.estimated_cost,
-                    new_cost=dto.actual_cost,
-                    updated_by=user_id
-                )
-                await self._event_bus.publish(cost_event)
-        elif new_status == ActivityStatus.CANCELLED:
-            activity.cancel_activity()
-            event = ActivityCancelledEvent(
-                trip_id=trip_id,
-                day_id=activity.day_id,
-                activity_id=activity_id,
-                cancelled_by=user_id
-            )
-        else:
-            # Para estado PLANNED, simplemente cambiar estado
-            activity.change_status(new_status)
-            event = None
-
-        # Actualizar actividad
+        # Guardar cambios
         updated_activity = await self._activity_repository.update(activity)
 
-        # Emitir evento si se creó
-        if event:
-            await self._event_bus.publish(event)
-
-        # Determinar permisos del usuario
-        member = await self._trip_member_repository.find_by_trip_and_user(trip_id, user_id)
-        can_edit = member.can_edit_trip() if member else False
-        can_change_status = member.is_active() if member else False
-
-        # Obtener información del creador
-        creator_user = await self._user_repository.find_by_id(activity.created_by)
-        creator_info = creator_user.to_public_dict() if creator_user else None
-
-        return ActivityDTOMapper.to_activity_response(
-            updated_activity.to_public_data(),
-            can_edit=can_edit,
-            can_change_status=can_change_status,
-            creator_info=creator_info
+        # Publicar eventos
+        status_event = ActivityStatusChangedEvent(
+            activity_id=activity_id,
+            day_id=activity.day_id,
+            trip_id=activity.trip_id,
+            changed_by=user_id,
+            old_status=old_status,
+            new_status=dto.status
         )
+        await self._event_bus.publish(status_event)
+
+        # Evento específico para completado
+        if dto.status == "completed":
+            completed_event = ActivityCompletedEvent(
+                activity_id=activity_id,
+                day_id=activity.day_id,
+                trip_id=activity.trip_id,
+                completed_by=user_id,
+                actual_duration=activity.actual_duration,
+                actual_cost=activity.actual_cost
+            )
+            await self._event_bus.publish(completed_event)
+
+        return ActivityDTOMapper.to_activity_response(updated_activity.to_public_data())

@@ -1,120 +1,141 @@
+# src/modules/activities/domain/activity_events.py
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
-from shared.events.base_event import DomainEvent
-
-
-ACTIVITY_EVENT_TYPES = {
-    "ACTIVITY_CREATED": "activity_created",
-    "ACTIVITY_UPDATED": "activity_updated",
-    "ACTIVITY_DELETED": "activity_deleted",
-    "ACTIVITY_STARTED": "activity_started",
-    "ACTIVITY_COMPLETED": "activity_completed",
-    "ACTIVITY_CANCELLED": "activity_cancelled",
-    "ACTIVITY_ORDER_CHANGED": "activity_order_changed",
-    "ACTIVITY_COST_UPDATED": "activity_cost_updated"
-}
+from typing import Optional, List, Dict, Any
+from shared.events.base_event import BaseEvent
 
 
 @dataclass
-class ActivityCreatedEvent(DomainEvent):
-    trip_id: str = ""
-    day_id: str = ""
-    activity_id: str = ""
-    title: str = ""
-    created_by: str = ""
-    category: str = ""
+class ActivityCreatedEvent(BaseEvent):
+    activity_id: str
+    day_id: str
+    trip_id: str
+    created_by: str
+    title: str
+    category: str
     
     def __post_init__(self):
-        self.event_type = ACTIVITY_EVENT_TYPES["ACTIVITY_CREATED"]
-        self.occurred_at = datetime.utcnow()
+        super().__init__(
+            event_type="activity.created",
+            aggregate_id=self.activity_id,
+            occurred_at=datetime.utcnow(),
+            metadata={
+                "day_id": self.day_id,
+                "trip_id": self.trip_id,
+                "created_by": self.created_by,
+                "title": self.title,
+                "category": self.category
+            }
+        )
 
 
 @dataclass
-class ActivityUpdatedEvent(DomainEvent):
-    trip_id: str = ""
-    day_id: str = ""
-    activity_id: str = ""
-    updated_by: str = ""
-    updated_fields: list = None
+class ActivityUpdatedEvent(BaseEvent):
+    activity_id: str
+    day_id: str
+    trip_id: str
+    updated_by: str
+    updated_fields: List[str]
     
     def __post_init__(self):
-        self.event_type = ACTIVITY_EVENT_TYPES["ACTIVITY_UPDATED"]
-        self.occurred_at = datetime.utcnow()
+        super().__init__(
+            event_type="activity.updated",
+            aggregate_id=self.activity_id,
+            occurred_at=datetime.utcnow(),
+            metadata={
+                "day_id": self.day_id,
+                "trip_id": self.trip_id,
+                "updated_by": self.updated_by,
+                "updated_fields": self.updated_fields
+            }
+        )
 
 
 @dataclass
-class ActivityDeletedEvent(DomainEvent):
-    trip_id: str = ""
-    day_id: str = ""
-    activity_id: str = ""
-    deleted_by: str = ""
+class ActivityStatusChangedEvent(BaseEvent):
+    activity_id: str
+    day_id: str
+    trip_id: str
+    changed_by: str
+    old_status: str
+    new_status: str
     
     def __post_init__(self):
-        self.event_type = ACTIVITY_EVENT_TYPES["ACTIVITY_DELETED"]
-        self.occurred_at = datetime.utcnow()
+        super().__init__(
+            event_type="activity.status_changed",
+            aggregate_id=self.activity_id,
+            occurred_at=datetime.utcnow(),
+            metadata={
+                "day_id": self.day_id,
+                "trip_id": self.trip_id,
+                "changed_by": self.changed_by,
+                "old_status": self.old_status,
+                "new_status": self.new_status
+            }
+        )
 
 
 @dataclass
-class ActivityStartedEvent(DomainEvent):
-    trip_id: str = ""
-    day_id: str = ""
-    activity_id: str = ""
-    started_by: str = ""
-    
-    def __post_init__(self):
-        self.event_type = ACTIVITY_EVENT_TYPES["ACTIVITY_STARTED"]
-        self.occurred_at = datetime.utcnow()
-
-
-@dataclass
-class ActivityCompletedEvent(DomainEvent):
-    trip_id: str = ""
-    day_id: str = ""
-    activity_id: str = ""
-    completed_by: str = ""
+class ActivityCompletedEvent(BaseEvent):
+    activity_id: str
+    day_id: str
+    trip_id: str
+    completed_by: str
+    actual_duration: Optional[int] = None
     actual_cost: Optional[float] = None
     
     def __post_init__(self):
-        self.event_type = ACTIVITY_EVENT_TYPES["ACTIVITY_COMPLETED"]
-        self.occurred_at = datetime.utcnow()
+        super().__init__(
+            event_type="activity.completed",
+            aggregate_id=self.activity_id,
+            occurred_at=datetime.utcnow(),
+            metadata={
+                "day_id": self.day_id,
+                "trip_id": self.trip_id,
+                "completed_by": self.completed_by,
+                "actual_duration": self.actual_duration,
+                "actual_cost": self.actual_cost
+            }
+        )
 
 
 @dataclass
-class ActivityCancelledEvent(DomainEvent):
-    trip_id: str = ""
-    day_id: str = ""
-    activity_id: str = ""
-    cancelled_by: str = ""
+class ActivitiesReorderedEvent(BaseEvent):
+    day_id: str
+    trip_id: str
+    reordered_by: str
+    activity_orders: List[Dict[str, Any]]
     
     def __post_init__(self):
-        self.event_type = ACTIVITY_EVENT_TYPES["ACTIVITY_CANCELLED"]
-        self.occurred_at = datetime.utcnow()
+        super().__init__(
+            event_type="activities.reordered",
+            aggregate_id=self.day_id,
+            occurred_at=datetime.utcnow(),
+            metadata={
+                "trip_id": self.trip_id,
+                "reordered_by": self.reordered_by,
+                "activity_orders": self.activity_orders
+            }
+        )
 
 
 @dataclass
-class ActivityOrderChangedEvent(DomainEvent):
-    trip_id: str = ""
-    day_id: str = ""
-    activity_id: str = ""
-    old_order: int = 0
-    new_order: int = 0
-    changed_by: str = ""
+class ActivityDeletedEvent(BaseEvent):
+    activity_id: str
+    day_id: str
+    trip_id: str
+    deleted_by: str
+    title: str
     
     def __post_init__(self):
-        self.event_type = ACTIVITY_EVENT_TYPES["ACTIVITY_ORDER_CHANGED"]
-        self.occurred_at = datetime.utcnow()
-
-
-@dataclass
-class ActivityCostUpdatedEvent(DomainEvent):
-    trip_id: str = ""
-    day_id: str = ""
-    activity_id: str = ""
-    old_cost: Optional[float] = None
-    new_cost: Optional[float] = None
-    updated_by: str = ""
-    
-    def __post_init__(self):
-        self.event_type = ACTIVITY_EVENT_TYPES["ACTIVITY_COST_UPDATED"]
-        self.occurred_at = datetime.utcnow()
+        super().__init__(
+            event_type="activity.deleted",
+            aggregate_id=self.activity_id,
+            occurred_at=datetime.utcnow(),
+            metadata={
+                "day_id": self.day_id,
+                "trip_id": self.trip_id,
+                "deleted_by": self.deleted_by,
+                "title": self.title
+            }
+        )

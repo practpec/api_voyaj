@@ -1,8 +1,7 @@
 # src/modules/activities/application/dtos/activity_dto.py
 from dataclasses import dataclass
-from datetime import datetime, time
+from datetime import datetime
 from typing import Optional, List, Dict, Any
-from ...domain.activity import ActivityData, ActivityCategory, ActivityStatus
 
 
 @dataclass
@@ -10,242 +9,154 @@ class CreateActivityDTO:
     day_id: str
     title: str
     description: Optional[str] = None
-    location: Optional[str] = None
-    start_time: Optional[time] = None
-    end_time: Optional[time] = None
+    category: str = "general"
+    estimated_duration: Optional[int] = None
     estimated_cost: Optional[float] = None
-    category: ActivityCategory = ActivityCategory.OTHER
+    currency: str = "USD"
+    location: Optional[str] = None
+    coordinates: Optional[Dict[str, float]] = None
+    notes: Optional[str] = None
+    priority: str = "medium"
+    tags: Optional[List[str]] = None
+    external_links: Optional[List[str]] = None
+    booking_info: Optional[Dict[str, Any]] = None
 
 
 @dataclass
 class UpdateActivityDTO:
     title: Optional[str] = None
     description: Optional[str] = None
-    location: Optional[str] = None
-    start_time: Optional[time] = None
-    end_time: Optional[time] = None
+    category: Optional[str] = None
+    estimated_duration: Optional[int] = None
     estimated_cost: Optional[float] = None
-    category: Optional[ActivityCategory] = None
+    currency: Optional[str] = None
+    location: Optional[str] = None
+    coordinates: Optional[Dict[str, float]] = None
+    notes: Optional[str] = None
+    priority: Optional[str] = None
+    tags: Optional[List[str]] = None
+    external_links: Optional[List[str]] = None
+    booking_info: Optional[Dict[str, Any]] = None
+    actual_duration: Optional[int] = None
+    actual_cost: Optional[float] = None
+    rating: Optional[int] = None
+    review: Optional[str] = None
 
 
 @dataclass
 class ChangeActivityStatusDTO:
-    new_status: str  # Corregido: usar new_status
+    status: str
+    notes: Optional[str] = None
+    actual_start_time: Optional[datetime] = None
+    actual_end_time: Optional[datetime] = None
     actual_cost: Optional[float] = None
 
 
 @dataclass
 class ReorderActivitiesDTO:
-    activity_orders: List[Dict[str, Any]]  # [{"activity_id": str, "order": int}]
-
-
-@dataclass
-class ActivityFiltersDTO:
-    day_id: Optional[str] = None
-    trip_id: Optional[str] = None
-    status: Optional[str] = None
-    category: Optional[str] = None
-    created_by: Optional[str] = None
-    has_cost: Optional[bool] = None
-    limit: int = 50
-    offset: int = 0
+    activity_orders: List[Dict[str, Any]]
 
 
 @dataclass
 class ActivityResponseDTO:
     id: str
     day_id: str
+    trip_id: str
     title: str
     description: Optional[str]
-    location: Optional[str]
-    start_time: Optional[time]
-    end_time: Optional[time]
-    estimated_cost: Optional[float]
-    actual_cost: Optional[float]
     category: str
     status: str
+    priority: str
     order: int
-    duration_minutes: Optional[int]
+    estimated_duration: Optional[int]
+    actual_duration: Optional[int]
+    estimated_cost: Optional[float]
+    actual_cost: Optional[float]
+    currency: str
+    location: Optional[str]
+    coordinates: Optional[Dict[str, float]]
+    notes: Optional[str]
+    tags: List[str]
+    external_links: List[str]
+    booking_info: Optional[Dict[str, Any]]
+    rating: Optional[int]
+    review: Optional[str]
     created_by: str
     created_at: datetime
     updated_at: datetime
-    can_edit: bool = False
-    can_change_status: bool = False
-    creator_info: Optional[Dict[str, Any]] = None
-
-
-@dataclass
-class ActivityListResponseDTO:
-    id: str
-    title: str
-    location: Optional[str]
-    start_time: Optional[time]
-    end_time: Optional[time]
-    estimated_cost: Optional[float]
-    category: str
-    status: str
-    order: int
-    duration_minutes: Optional[int]
+    completed_at: Optional[datetime]
 
 
 @dataclass
 class DayActivitiesResponseDTO:
     day_id: str
-    day_date: str
-    activities: List[ActivityListResponseDTO]
-    total_activities: int
-    completed_activities: int
-    total_estimated_cost: float
-    total_actual_cost: float
-    completion_percentage: float
+    trip_id: str
+    activities: List[ActivityResponseDTO]
+    stats: Optional[Dict[str, Any]] = None
 
 
 @dataclass
-class ActivityStatsDTO:
+class ActivitySummaryDTO:
     total_activities: int
     completed_activities: int
-    in_progress_activities: int
-    planned_activities: int
+    pending_activities: int
     cancelled_activities: int
-    completion_percentage: float
     total_estimated_cost: float
     total_actual_cost: float
+    total_estimated_duration: int
+    total_actual_duration: int
     activities_by_category: Dict[str, int]
-
-
-@dataclass
-class ReorderResponseDTO:
-    reordered_activities: List[ActivityListResponseDTO]
-    total_reordered: int
-    message: str
+    activities_by_priority: Dict[str, int]
 
 
 class ActivityDTOMapper:
     
-    CATEGORY_LABELS = {
-        ActivityCategory.TRANSPORT.value: "Transporte",
-        ActivityCategory.ACCOMMODATION.value: "Alojamiento", 
-        ActivityCategory.FOOD.value: "Comida",
-        ActivityCategory.SIGHTSEEING.value: "Turismo",
-        ActivityCategory.ENTERTAINMENT.value: "Entretenimiento",
-        ActivityCategory.SHOPPING.value: "Compras",
-        ActivityCategory.ADVENTURE.value: "Aventura",
-        ActivityCategory.RELAXATION.value: "Relajación",
-        ActivityCategory.CULTURAL.value: "Cultural",
-        ActivityCategory.BUSINESS.value: "Negocios",
-        ActivityCategory.OTHER.value: "Otro"
-    }
-    
-    STATUS_LABELS = {
-        ActivityStatus.PLANNED.value: "Planificada",
-        ActivityStatus.IN_PROGRESS.value: "En Progreso",
-        ActivityStatus.COMPLETED.value: "Completada",
-        ActivityStatus.CANCELLED.value: "Cancelada"
-    }
-
     @staticmethod
-    def to_activity_response(
-        activity: ActivityData,
-        can_edit: bool = False,
-        can_change_status: bool = False,
-        creator_info: Optional[Dict[str, Any]] = None
-    ) -> ActivityResponseDTO:
-        # Calcular duración si hay horarios
-        duration_minutes = None
-        if activity.start_time and activity.end_time:
-            start_minutes = activity.start_time.hour * 60 + activity.start_time.minute
-            end_minutes = activity.end_time.hour * 60 + activity.end_time.minute
-            duration_minutes = end_minutes - start_minutes
-            if duration_minutes < 0:  # Si cruza medianoche
-                duration_minutes += 24 * 60
-
+    def to_activity_response(activity_data: Dict[str, Any]) -> ActivityResponseDTO:
         return ActivityResponseDTO(
-            id=activity.id,
-            day_id=activity.day_id,
-            title=activity.title,
-            description=activity.description,
-            location=activity.location,
-            start_time=activity.start_time,
-            end_time=activity.end_time,
-            estimated_cost=activity.estimated_cost,
-            actual_cost=activity.actual_cost,
-            category=activity.category,
-            status=activity.status,
-            order=activity.order,
-            duration_minutes=duration_minutes,
-            created_by=activity.created_by,
-            created_at=activity.created_at,
-            updated_at=activity.updated_at,
-            can_edit=can_edit,
-            can_change_status=can_change_status,
-            creator_info=creator_info
-        )
-
-    @staticmethod
-    def to_activity_list_response(activity: ActivityData) -> ActivityListResponseDTO:
-        # Calcular duración si hay horarios
-        duration_minutes = None
-        if activity.start_time and activity.end_time:
-            start_minutes = activity.start_time.hour * 60 + activity.start_time.minute
-            end_minutes = activity.end_time.hour * 60 + activity.end_time.minute
-            duration_minutes = end_minutes - start_minutes
-            if duration_minutes < 0:  # Si cruza medianoche
-                duration_minutes += 24 * 60
-
-        return ActivityListResponseDTO(
-            id=activity.id,
-            title=activity.title,
-            location=activity.location,
-            start_time=activity.start_time,
-            end_time=activity.end_time,
-            estimated_cost=activity.estimated_cost,
-            category=activity.category,
-            status=activity.status,
-            order=activity.order,
-            duration_minutes=duration_minutes
+            id=activity_data.get("id"),
+            day_id=activity_data.get("day_id"),
+            trip_id=activity_data.get("trip_id"),
+            title=activity_data.get("title"),
+            description=activity_data.get("description"),
+            category=activity_data.get("category"),
+            status=activity_data.get("status"),
+            priority=activity_data.get("priority"),
+            order=activity_data.get("order", 0),
+            estimated_duration=activity_data.get("estimated_duration"),
+            actual_duration=activity_data.get("actual_duration"),
+            estimated_cost=activity_data.get("estimated_cost"),
+            actual_cost=activity_data.get("actual_cost"),
+            currency=activity_data.get("currency", "USD"),
+            location=activity_data.get("location"),
+            coordinates=activity_data.get("coordinates"),
+            notes=activity_data.get("notes"),
+            tags=activity_data.get("tags", []),
+            external_links=activity_data.get("external_links", []),
+            booking_info=activity_data.get("booking_info"),
+            rating=activity_data.get("rating"),
+            review=activity_data.get("review"),
+            created_by=activity_data.get("created_by"),
+            created_at=activity_data.get("created_at"),
+            updated_at=activity_data.get("updated_at"),
+            completed_at=activity_data.get("completed_at")
         )
 
     @staticmethod
     def to_day_activities_response(
-        day_id: str,
-        day_date: str,
-        activities: List[ActivityListResponseDTO],
+        day_id: str, 
+        trip_id: str, 
+        activities: List[Dict[str, Any]], 
         stats: Optional[Dict[str, Any]] = None
     ) -> DayActivitiesResponseDTO:
-        if stats is None:
-            stats = {}
-            
+        activity_responses = [
+            ActivityDTOMapper.to_activity_response(activity) 
+            for activity in activities
+        ]
+        
         return DayActivitiesResponseDTO(
             day_id=day_id,
-            day_date=day_date,
-            activities=activities,
-            total_activities=stats.get("total_activities", len(activities)),
-            completed_activities=stats.get("completed", 0),
-            total_estimated_cost=stats.get("estimated_cost", 0.0),
-            total_actual_cost=stats.get("actual_cost", 0.0),
-            completion_percentage=stats.get("progress_percentage", 0.0)
-        )
-
-    @staticmethod
-    def to_activity_stats(stats_data: Dict[str, Any]) -> ActivityStatsDTO:
-        return ActivityStatsDTO(
-            total_activities=stats_data.get("total_activities", 0),
-            completed_activities=stats_data.get("completed", 0),
-            in_progress_activities=stats_data.get("in_progress", 0),
-            planned_activities=stats_data.get("planned", 0),
-            cancelled_activities=stats_data.get("cancelled", 0),
-            completion_percentage=stats_data.get("progress_percentage", 0.0),
-            total_estimated_cost=stats_data.get("estimated_cost", 0.0),
-            total_actual_cost=stats_data.get("actual_cost", 0.0),
-            activities_by_category=stats_data.get("activities_by_category", {})
-        )
-
-    @staticmethod
-    def to_reorder_response(
-        activities: List[ActivityListResponseDTO]
-    ) -> ReorderResponseDTO:
-        return ReorderResponseDTO(
-            reordered_activities=activities,
-            total_reordered=len(activities),
-            message=f"Se reordenaron {len(activities)} actividades exitosamente"
+            trip_id=trip_id,
+            activities=activity_responses,
+            stats=stats
         )

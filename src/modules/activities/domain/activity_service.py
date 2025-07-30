@@ -1,251 +1,243 @@
-from typing import List, Optional
-from datetime import time
-from .activity import Activity, ActivityStatus
+# src/modules/activities/domain/activity_service.py
+from typing import List, Dict, Any, Optional
+from .activity import Activity
 from .interfaces.activity_repository import IActivityRepository
-from modules.days.domain.interfaces.day_repository import IDayRepository
-from modules.trips.domain.interfaces.trip_repository import ITripRepository
-from modules.trips.domain.interfaces.trip_member_repository import ITripMemberRepository
-from shared.errors.custom_errors import NotFoundError, ValidationError, ForbiddenError
+from modules.days.domain.Day import Day
+from shared.errors.custom_errors import ValidationError, BusinessRuleError
 
 
 class ActivityService:
-    def __init__(
-        self,
-        activity_repository: IActivityRepository,
-        day_repository: IDayRepository,
-        trip_repository: ITripRepository,
-        trip_member_repository: ITripMemberRepository
-    ):
+    def __init__(self, activity_repository: IActivityRepository):
         self._activity_repository = activity_repository
-        self._day_repository = day_repository
-        self._trip_repository = trip_repository
-        self._trip_member_repository = trip_member_repository
 
     async def validate_activity_creation(
-        self,
-        day_id: str,
-        title: str,
-        user_id: str,
-        start_time: Optional[time] = None,
-        end_time: Optional[time] = None
-    ) -> str:
-        """Validar creación de actividad y retornar trip_id"""
-        if not title or len(title.strip()) < 2:
-            raise ValidationError("El título debe tener al menos 2 caracteres")
+        self, 
+        dto, 
+        day: Day
+    ) -> None:
+        """Validar creación de actividad"""
+        # Validar título
+        if not dto.title or len(dto.title.strip()) < 3:
+            raise ValidationError("El título debe tener al menos 3 caracteres")
 
-        day = await self._day_repository.find_by_id(day_id)
-        if not day or not day.is_active():
-            raise NotFoundError("Día no encontrado")
+        # Validar categoría
+        valid_categories = [
+            "cultural", "adventure", "food", "shopping", "transport", 
+            "accommodation", "entertainment", "nature", "sports", "other"
+        ]
+        if dto.category not in valid_categories:
+            raise ValidationError(f"Categoría inválida. Debe ser una de: {', '.join(valid_categories)}")
 
-        trip = await self._trip_repository.find_by_id(day.trip_id)
-        if not trip or not trip.is_active():
-            raise NotFoundError("Viaje no encontrado")
+        # Validar prioridad
+        valid_priorities = ["low", "medium", "high", "critical"]
+        if dto.priority not in valid_priorities:
+            raise ValidationError(f"Prioridad inválida. Debe ser una de: {', '.join(valid_priorities)}")
 
-        await self._validate_user_permissions(trip.id, user_id, "create_activity")
+        # Validar duración estimada
+        if dto.estimated_duration is not None and dto.estimated_duration <= 0:
+            raise ValidationError("La duración estimada debe ser mayor a 0 minutos")
 
-        if start_time and end_time and start_time >= end_time:
-            raise ValidationError("La hora de inicio debe ser anterior a la hora de fin")
+        # Validar costo estimado
+        if dto.estimated_cost is not None and dto.estimated_cost < 0:
+            raise ValidationError("El costo estimado no puede ser negativo")
 
-        return trip.id
-
-    async def validate_activity_update(
-        self,
-        activity: Activity,
-        user_id: str
-    ) -> str:
-        """Validar actualización de actividad y retornar trip_id"""
-        if not activity.is_active():
-            raise ValidationError("No se puede actualizar una actividad eliminada")
-
-        day = await self._day_repository.find_by_id(activity.day_id)
-        if not day or not day.is_active():
-            raise NotFoundError("Día no encontrado")
-
-        trip_id = await self._validate_user_permissions(day.trip_id, user_id, "edit_activity")
-        return trip_id
-
-    async def validate_activity_deletion(
-        self,
-        activity: Activity,
-        user_id: str
-    ) -> str:
-        """Validar eliminación de actividad y retornar trip_id"""
-        if not activity.is_active():
-            raise ValidationError("La actividad ya está eliminada")
-
-        day = await self._day_repository.find_by_id(activity.day_id)
-        if not day or not day.is_active():
-            raise NotFoundError("Día no encontrado")
-
-        trip_id = await self._validate_user_permissions(day.trip_id, user_id, "delete_activity")
-        return trip_id
-
-    async def validate_activity_status_change(
-        self,
-        activity: Activity,
-        user_id: str,
-        new_status: ActivityStatus
-    ) -> str:
-        """Validar cambio de estado de actividad y retornar trip_id"""
-        if not activity.is_active():
-            raise ValidationError("No se puede cambiar el estado de una actividad eliminada")
-
-        day = await self._day_repository.find_by_id(activity.day_id)
-        if not day or not day.is_active():
-            raise NotFoundError("Día no encontrado")
-
-        # Validaciones específicas por estado
-        if new_status == ActivityStatus.IN_PROGRESS:
-            if activity.status != ActivityStatus.PLANNED.value:
-                raise ValidationError("Solo se pueden iniciar actividades planificadas")
-        elif new_status == ActivityStatus.COMPLETED:
-            if activity.status == ActivityStatus.CANCELLED.value:
-                raise ValidationError("No se puede completar una actividad cancelada")
-        elif new_status == ActivityStatus.CANCELLED:
-            if activity.status == ActivityStatus.COMPLETED.value:
-                raise ValidationError("No se puede cancelar una actividad completada")
-
-        trip_id = await self._validate_user_permissions(day.trip_id, user_id, "change_activity_status")
-        return trip_id
-
-    async def _validate_user_permissions(
-        self,
-        trip_id: str,
-        user_id: str,
-        action: str
-    ) -> str:
-        """Validar permisos del usuario en el viaje"""
-        member = await self._trip_member_repository.find_by_trip_and_user(trip_id, user_id)
-        if not member:
-            raise ForbiddenError("No eres miembro de este viaje")
-
-        # Definir qué roles pueden realizar qué acciones
-        if action in ["create_activity", "edit_activity", "delete_activity"]:
-            if not member.can_edit_trip():
-                raise ForbiddenError("No tienes permisos para gestionar actividades")
-        elif action in ["change_activity_status"]:
-            # Los miembros regulares pueden cambiar estados de actividades
-            if not member.is_active():
-                raise ForbiddenError("No tienes acceso activo a este viaje")
-
-        return trip_id
-
-    async def reorder_activities(
-        self,
-        day_id: str,
-        activity_orders: List[dict],  # [{"activity_id": str, "order": int}]
-        user_id: str
-    ) -> List[Activity]:
-        """Reordenar actividades de un día"""
-        day = await self._day_repository.find_by_id(day_id)
-        if not day or not day.is_active():
-            raise NotFoundError("Día no encontrado")
-
-        await self._validate_user_permissions(day.trip_id, user_id, "edit_activity")
-
-        activities = []
-        for item in activity_orders:
-            activity = await self._activity_repository.find_by_id(item["activity_id"])
-            if not activity or not activity.is_active() or activity.day_id != day_id:
-                raise ValidationError(f"Actividad {item['activity_id']} no válida para este día")
+        # Validar coordenadas
+        if dto.coordinates:
+            if not isinstance(dto.coordinates, dict):
+                raise ValidationError("Las coordenadas deben ser un objeto con lat y lng")
             
-            activity.update_order(item["order"])
-            updated_activity = await self._activity_repository.update(activity)
-            activities.append(updated_activity)
+            if "lat" not in dto.coordinates or "lng" not in dto.coordinates:
+                raise ValidationError("Las coordenadas deben incluir lat y lng")
+            
+            try:
+                lat = float(dto.coordinates["lat"])
+                lng = float(dto.coordinates["lng"])
+                
+                if not (-90 <= lat <= 90):
+                    raise ValidationError("La latitud debe estar entre -90 y 90")
+                if not (-180 <= lng <= 180):
+                    raise ValidationError("La longitud debe estar entre -180 y 180")
+            except (ValueError, TypeError):
+                raise ValidationError("Las coordenadas deben ser números válidos")
 
-        return activities
+        # Validar límite de actividades por día
+        activity_count = await self._activity_repository.count_by_day_id(day.id)
+        if activity_count >= 20:  # Límite máximo de actividades por día
+            raise BusinessRuleError("No se pueden crear más de 20 actividades por día")
 
-    async def can_user_access_activity(
-        self,
-        activity: Activity,
+    async def validate_activity_update(self, activity: Activity, **update_fields) -> None:
+        """Validar actualización de actividad"""
+        # Verificar si la actividad puede ser editada
+        if not activity.can_be_edited():
+            raise BusinessRuleError("Esta actividad no puede ser editada en su estado actual")
+
+        # Validar título si se está actualizando
+        if "title" in update_fields:
+            title = update_fields["title"]
+            if not title or len(title.strip()) < 3:
+                raise ValidationError("El título debe tener al menos 3 caracteres")
+
+        # Validar categoría si se está actualizando
+        if "category" in update_fields:
+            category = update_fields["category"]
+            valid_categories = [
+                "cultural", "adventure", "food", "shopping", "transport", 
+                "accommodation", "entertainment", "nature", "sports", "other"
+            ]
+            if category not in valid_categories:
+                raise ValidationError(f"Categoría inválida. Debe ser una de: {', '.join(valid_categories)}")
+
+        # Validar rating si se está actualizando
+        if "rating" in update_fields:
+            rating = update_fields["rating"]
+            if rating is not None and not (1 <= rating <= 5):
+                raise ValidationError("La calificación debe estar entre 1 y 5")
+
+        # Validar costos reales
+        if "actual_cost" in update_fields:
+            actual_cost = update_fields["actual_cost"]
+            if actual_cost is not None and actual_cost < 0:
+                raise ValidationError("El costo real no puede ser negativo")
+
+    async def validate_status_change(
+        self, 
+        activity: Activity, 
+        new_status: str, 
         user_id: str
-    ) -> bool:
-        """Verificar si usuario puede acceder a la actividad"""
-        try:
-            day = await self._day_repository.find_by_id(activity.day_id)
-            if not day:
-                return False
+    ) -> None:
+        """Validar cambio de estado"""
+        valid_statuses = ["pending", "in_progress", "completed", "cancelled", "skipped"]
+        if new_status not in valid_statuses:
+            raise ValidationError(f"Estado inválido. Debe ser uno de: {', '.join(valid_statuses)}")
 
-            member = await self._trip_member_repository.find_by_trip_and_user(day.trip_id, user_id)
-            return member is not None
-        except:
-            return False
+        current_status = activity.status
 
-   
-    async def get_trip_activity_summary(
-        self,
-        trip_id: str
-    ) -> dict:
-        """Obtener resumen de actividades del viaje completo"""
-        activities = await self._activity_repository.find_by_trip_id(trip_id)
-        
-        total_activities = len(activities)
-        completed_activities = len([a for a in activities if a.is_completed()])
-        
-        categories = {}
-        for activity in activities:
-            category = activity.category
-            if category not in categories:
-                categories[category] = 0
-            categories[category] += 1
-        
-        return {
-            "total_activities": total_activities,
-            "completed_activities": completed_activities,
-            "completion_percentage": (completed_activities / total_activities * 100) if total_activities > 0 else 0,
-            "activities_by_category": categories
+        # Reglas de transición de estados
+        valid_transitions = {
+            "pending": ["in_progress", "cancelled", "skipped"],
+            "in_progress": ["completed", "cancelled", "pending"],
+            "completed": [],  # No se puede cambiar desde completado
+            "cancelled": ["pending"],
+            "skipped": ["pending"]
         }
-    
-    # src/modules/activities/domain/activity_service.py (métodos faltantes)
 
-    async def get_day_activity_statistics(self, day_id: str) -> dict:
-        """Obtener estadísticas de actividades del día"""
+        if new_status not in valid_transitions.get(current_status, []):
+            raise BusinessRuleError(
+                f"No se puede cambiar de '{current_status}' a '{new_status}'"
+            )
+
+    async def validate_activity_reorder(
+        self, 
+        day_id: str, 
+        activity_orders: List[Dict[str, Any]]
+    ) -> None:
+        """Validar reordenamiento de actividades"""
+        if not activity_orders:
+            raise ValidationError("La lista de órdenes no puede estar vacía")
+
+        # Verificar que todos los elementos tengan la estructura correcta
+        for i, order_item in enumerate(activity_orders):
+            if not isinstance(order_item, dict):
+                raise ValidationError(f"El elemento {i} debe ser un objeto")
+            
+            if "activity_id" not in order_item or "order" not in order_item:
+                raise ValidationError(f"El elemento {i} debe tener 'activity_id' y 'order'")
+            
+            try:
+                order_value = int(order_item["order"])
+                if order_value < 1:
+                    raise ValidationError(f"El orden del elemento {i} debe ser mayor a 0")
+            except (ValueError, TypeError):
+                raise ValidationError(f"El orden del elemento {i} debe ser un número entero")
+
+        # Verificar que no haya IDs duplicados
+        activity_ids = [item["activity_id"] for item in activity_orders]
+        if len(activity_ids) != len(set(activity_ids)):
+            raise ValidationError("No puede haber IDs de actividad duplicados")
+
+        # Verificar que no haya órdenes duplicados
+        orders = [item["order"] for item in activity_orders]
+        if len(orders) != len(set(orders)):
+            raise ValidationError("No puede haber números de orden duplicados")
+
+    async def validate_activity_deletion(self, activity: Activity, user_id: str) -> None:
+        """Validar eliminación de actividad"""
+        if activity.status == "in_progress":
+            raise BusinessRuleError("No se puede eliminar una actividad que está en progreso")
+
+    async def get_next_activity_order(self, day_id: str) -> int:
+        """Obtener el siguiente número de orden para una nueva actividad"""
         activities = await self._activity_repository.find_by_day_id_ordered(day_id)
         
-        total_activities = len(activities)
-        planned_count = len([a for a in activities if a.status == ActivityStatus.PLANNED.value])
-        in_progress_count = len([a for a in activities if a.status == ActivityStatus.IN_PROGRESS.value])
-        completed_count = len([a for a in activities if a.status == ActivityStatus.COMPLETED.value])
-        cancelled_count = len([a for a in activities if a.status == ActivityStatus.CANCELLED.value])
+        if not activities:
+            return 1
         
-        # Calcular costos
-        estimated_cost = sum(a.estimated_cost or 0 for a in activities)
-        actual_cost = sum(a.actual_cost or 0 for a in activities if a.actual_cost is not None)
+        # Obtener el orden máximo y sumar 1
+        max_order = max(activity.order for activity in activities)
+        return max_order + 1
+
+    async def generate_day_stats(self, activities: List[Activity]) -> Dict[str, Any]:
+        """Generar estadísticas de actividades del día"""
+        if not activities:
+            return {
+                "total_activities": 0,
+                "completed_activities": 0,
+                "pending_activities": 0,
+                "cancelled_activities": 0,
+                "total_estimated_cost": 0.0,
+                "total_actual_cost": 0.0,
+                "total_estimated_duration": 0,
+                "total_actual_duration": 0,
+                "activities_by_category": {},
+                "activities_by_priority": {}
+            }
+
+        # Contadores básicos
+        total = len(activities)
+        completed = sum(1 for a in activities if a.status == "completed")
+        pending = sum(1 for a in activities if a.status == "pending")
+        cancelled = sum(1 for a in activities if a.status in ["cancelled", "skipped"])
+
+        # Costos
+        total_estimated_cost = sum(
+            a.to_dict().get("estimated_cost", 0) or 0 for a in activities
+        )
+        total_actual_cost = sum(
+            a.to_dict().get("actual_cost", 0) or 0 for a in activities
+        )
+
+        # Duración
+        total_estimated_duration = sum(
+            a.to_dict().get("estimated_duration", 0) or 0 for a in activities
+        )
+        total_actual_duration = sum(
+            a.to_dict().get("actual_duration", 0) or 0 for a in activities
+        )
+
+        # Agrupaciones
+        categories = {}
+        priorities = {}
         
-        # Progreso del día (actividades completadas / total)
-        progress_percentage = (completed_count / total_activities * 100) if total_activities > 0 else 0
-        
+        for activity in activities:
+            data = activity.to_dict()
+            
+            # Por categoría
+            category = data.get("category", "other")
+            categories[category] = categories.get(category, 0) + 1
+            
+            # Por prioridad
+            priority = data.get("priority", "medium")
+            priorities[priority] = priorities.get(priority, 0) + 1
+
         return {
-            "total_activities": total_activities,
-            "planned": planned_count,
-            "in_progress": in_progress_count,
-            "completed": completed_count,
-            "cancelled": cancelled_count,
-            "estimated_cost": estimated_cost,
-            "actual_cost": actual_cost,
-            "progress_percentage": round(progress_percentage, 2)
+            "total_activities": total,
+            "completed_activities": completed,
+            "pending_activities": pending,
+            "cancelled_activities": cancelled,
+            "total_estimated_cost": total_estimated_cost,
+            "total_actual_cost": total_actual_cost,
+            "total_estimated_duration": total_estimated_duration,
+            "total_actual_duration": total_actual_duration,
+            "activities_by_category": categories,
+            "activities_by_priority": priorities
         }
-    
-    # También agregar el permiso "view_activities" en _validate_user_permissions
-    async def _validate_user_permissions(
-        self,
-        trip_id: str,
-        user_id: str,
-        action: str
-    ) -> str:
-        """Validar permisos del usuario en el viaje"""
-        member = await self._trip_member_repository.find_by_trip_and_user(trip_id, user_id)
-        if not member:
-            raise ForbiddenError("No eres miembro de este viaje")
-    
-        # Definir qué roles pueden realizar qué acciones
-        if action in ["create_activity", "edit_activity", "delete_activity"]:
-            if not member.can_edit_trip():
-                raise ForbiddenError("No tienes permisos para gestionar actividades")
-        elif action in ["change_activity_status", "view_activities"]:
-            # Los miembros regulares pueden cambiar estados y ver actividades
-            if not member.is_active():
-                raise ForbiddenError("No tienes acceso activo a este viaje")
-    
-        return trip_id
-    

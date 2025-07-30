@@ -25,7 +25,7 @@ def get_activity_controller():
     trip_member_repo = RepositoryFactory.get_trip_member_repository()
     user_repo = RepositoryFactory.get_user_repository()
     day_repo = RepositoryFactory.get_day_repository()
-    event_bus = EventBus()
+    event_bus = EventBus.get_instance()
     
     activity_service = ServiceFactory.get_activity_service()
     
@@ -33,6 +33,7 @@ def get_activity_controller():
         activity_repository=activity_repo,
         trip_member_repository=trip_member_repo,
         user_repository=user_repo,
+        day_repository=day_repo,
         activity_service=activity_service,
         event_bus=event_bus
     )
@@ -41,13 +42,13 @@ def get_activity_controller():
         activity_repository=activity_repo,
         day_repository=day_repo,
         trip_member_repository=trip_member_repo,
-        user_repository=user_repo,
         activity_service=activity_service
     )
     
     get_day_activities_use_case = GetDayActivitiesUseCase(
         activity_repository=activity_repo,
         day_repository=day_repo,
+        trip_member_repository=trip_member_repo,
         activity_service=activity_service
     )
     
@@ -70,12 +71,14 @@ def get_activity_controller():
     reorder_activities_use_case = ReorderActivitiesUseCase(
         activity_repository=activity_repo,
         day_repository=day_repo,
+        trip_member_repository=trip_member_repo,
         activity_service=activity_service,
         event_bus=event_bus
     )
     
     delete_activity_use_case = DeleteActivityUseCase(
         activity_repository=activity_repo,
+        trip_member_repository=trip_member_repo,
         activity_service=activity_service,
         event_bus=event_bus
     )

@@ -1,8 +1,8 @@
 # src/modules/activities/application/use_cases/get_day_activities.py
-from typing import List
-from ..dtos.activity_dto import DayActivitiesResponseDTO, ActivityListResponseDTO, ActivityDTOMapper
+from ..dtos.activity_dto import DayActivitiesResponseDTO, ActivityDTOMapper, ActivitySummaryDTO
 from ...domain.activity_service import ActivityService
 from ...domain.interfaces.activity_repository import IActivityRepository
+from modules.trips.domain.interfaces.trip_member_repository import ITripMemberRepository
 from modules.days.domain.interfaces.day_repository import IDayRepository
 from shared.errors.custom_errors import NotFoundError, ForbiddenError
 
@@ -12,10 +12,12 @@ class GetDayActivitiesUseCase:
         self,
         activity_repository: IActivityRepository,
         day_repository: IDayRepository,
+        trip_member_repository: ITripMemberRepository,
         activity_service: ActivityService
     ):
         self._activity_repository = activity_repository
         self._day_repository = day_repository
+        self._trip_member_repository = trip_member_repository
         self._activity_service = activity_service
 
     async def execute(
@@ -24,39 +26,30 @@ class GetDayActivitiesUseCase:
         user_id: str, 
         include_stats: bool = True
     ) -> DayActivitiesResponseDTO:
-        """Obtener todas las actividades de un día específico"""
+        """Obtener actividades de un día"""
+        # Verificar que el día existe
         day = await self._day_repository.find_by_id(day_id)
-        if not day or not day.is_active():
+        if not day:
             raise NotFoundError("Día no encontrado")
 
-        # Verificar acceso del usuario al viaje
-        try:
-            await self._activity_service._validate_user_permissions(day.trip_id, user_id, "view_activities")
-        except Exception:
-            raise ForbiddenError("No tienes acceso a las actividades de este viaje")
+        # Verificar permisos en el viaje
+        trip_member = await self._trip_member_repository.find_by_trip_and_user(
+            day.trip_id, user_id
+        )
+        if not trip_member:
+            raise ForbiddenError("No tienes acceso a este día")
 
-        # Obtener actividades del día ordenadas
+        # Obtener actividades ordenadas
         activities = await self._activity_repository.find_by_day_id_ordered(day_id)
 
-        # Mapear actividades a DTOs
-        activity_list_responses: List[ActivityListResponseDTO] = []
-        for activity in activities:
-            activity_response = ActivityDTOMapper.to_activity_list_response(
-                activity.to_public_data()
-            )
-            activity_list_responses.append(activity_response)
-
-        # Obtener estadísticas del día si se solicitan
+        # Generar estadísticas si se solicita
         stats = None
-        if include_stats:
-            stats = await self._activity_service.get_day_activity_statistics(day_id)
-
-        # Formatear fecha del día
-        day_date = day.date.strftime("%Y-%m-%d")
+        if include_stats and activities:
+            stats = await self._activity_service.generate_day_stats(activities)
 
         return ActivityDTOMapper.to_day_activities_response(
-            day_id,
-            day_date,
-            activity_list_responses,
-            stats
+            day_id=day_id,
+            trip_id=day.trip_id,
+            activities=[activity.to_public_data() for activity in activities],
+            stats=stats
         )

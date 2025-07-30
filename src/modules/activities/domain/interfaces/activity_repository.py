@@ -1,3 +1,4 @@
+# src/modules/activities/domain/interfaces/activity_repository.py
 from abc import ABC, abstractmethod
 from typing import List, Optional, Dict, Any
 from ..activity import Activity
@@ -83,39 +84,4 @@ class IActivityRepository(ABC):
     @abstractmethod
     async def get_next_order(self, day_id: str) -> int:
         """Obtener siguiente número de orden para el día"""
-        pass
-
-    @abstractmethod
-    async def delete_by_day_id(self, day_id: str) -> bool:
-        """Eliminar todas las actividades de un día"""
-        pass
-
-    @abstractmethod
-    async def delete_by_trip_id(self, trip_id: str) -> bool:
-        """Eliminar todas las actividades de un viaje"""
-        pass
-
-    @abstractmethod
-    async def bulk_update_order(self, activity_orders: List[Dict[str, Any]]) -> bool:
-        """Actualizar orden de múltiples actividades"""
-        pass
-
-    @abstractmethod
-    async def get_day_activity_statistics(self, day_id: str) -> Dict[str, Any]:
-        """Obtener estadísticas de actividades del día"""
-        pass
-
-    @abstractmethod
-    async def get_trip_activity_statistics(self, trip_id: str) -> Dict[str, Any]:
-        """Obtener estadísticas de actividades del viaje"""
-        pass
-
-    @abstractmethod
-    async def search_activities(
-        self, 
-        query: str, 
-        trip_id: Optional[str] = None,
-        day_id: Optional[str] = None
-    ) -> List[Activity]:
-        """Buscar actividades por texto"""
         pass

@@ -1,11 +1,10 @@
 # src/modules/activities/infrastructure/controllers/activity_controller.py
-from fastapi import APIRouter, Depends, HTTPException, Query, Path
-from typing import Annotated, Optional
-from datetime import time
+from fastapi import HTTPException
+from typing import Optional
 
 from ...application.dtos.activity_dto import (
     CreateActivityDTO, UpdateActivityDTO, ChangeActivityStatusDTO, ReorderActivitiesDTO,
-    ActivityResponseDTO, DayActivitiesResponseDTO, ReorderResponseDTO
+    ActivityResponseDTO, DayActivitiesResponseDTO
 )
 from ...application.use_cases.create_activity import CreateActivityUseCase
 from ...application.use_cases.get_activity import GetActivityUseCase
@@ -15,9 +14,7 @@ from ...application.use_cases.change_activity_status import ChangeActivityStatus
 from ...application.use_cases.reorder_activities import ReorderActivitiesUseCase
 from ...application.use_cases.delete_activity import DeleteActivityUseCase
 
-from shared.middleware.AuthMiddleware import get_current_user
 from shared.utils.response_utils import SuccessResponse
-from shared.utils.validation_utils import ValidationUtils
 from shared.errors.custom_errors import NotFoundError, ForbiddenError, ValidationError
 
 
@@ -32,7 +29,6 @@ class ActivityController:
         reorder_activities_use_case: ReorderActivitiesUseCase,
         delete_activity_use_case: DeleteActivityUseCase
     ):
-        self.router = APIRouter(prefix="/api/activities", tags=["actividades"])
         self._create_activity_use_case = create_activity_use_case
         self._get_activity_use_case = get_activity_use_case
         self._get_day_activities_use_case = get_day_activities_use_case
@@ -41,132 +37,27 @@ class ActivityController:
         self._reorder_activities_use_case = reorder_activities_use_case
         self._delete_activity_use_case = delete_activity_use_case
 
-    async def create_activity(
-        self,
-        dto: CreateActivityDTO,
-        current_user: Annotated[dict, Depends(get_current_user)]
-    ) -> SuccessResponse[ActivityResponseDTO]:
+    async def create_activity(self, dto: CreateActivityDTO, current_user: dict) -> SuccessResponse:
         """Crear nueva actividad"""
         try:
-            result = await self._create_activity_use_case.execute(dto, current_user["sub"])
-            
+            activity = await self._create_activity_use_case.execute(dto, current_user["id"])
             return SuccessResponse(
-                data=result,
-                message="Actividad creada exitosamente"
+                message="Actividad creada exitosamente",
+                data=activity
             )
-            
-        except ValidationError as e:
+        except (NotFoundError, ForbiddenError, ValidationError) as e:
             raise HTTPException(status_code=400, detail=str(e))
-        except ForbiddenError as e:
-            raise HTTPException(status_code=403, detail=str(e))
-        except NotFoundError as e:
-            raise HTTPException(status_code=404, detail=str(e))
         except Exception as e:
             raise HTTPException(status_code=500, detail="Error interno del servidor")
 
-    async def get_activity(
-        self,
-        activity_id: Annotated[str, Path()],
-        current_user: Annotated[dict, Depends(get_current_user)]
-    ) -> SuccessResponse[ActivityResponseDTO]:
+    async def get_activity(self, activity_id: str, current_user: dict) -> SuccessResponse:
         """Obtener actividad por ID"""
         try:
-            validation_result = ValidationUtils.validate_uuid(activity_id)
-            if not validation_result.is_valid:
-                raise HTTPException(status_code=400, detail="ID de actividad inválido")
-
-            result = await self._get_activity_use_case.execute(activity_id, current_user["sub"])
-            
+            activity = await self._get_activity_use_case.execute(activity_id, current_user["id"])
             return SuccessResponse(
-                data=result,
-                message="Actividad obtenida exitosamente"
+                message="Actividad obtenida exitosamente",
+                data=activity
             )
-            
-        except NotFoundError as e:
-            raise HTTPException(status_code=404, detail=str(e))
-        except ForbiddenError as e:
-            raise HTTPException(status_code=403, detail=str(e))
-        except Exception as e:
-            raise HTTPException(status_code=500, detail="Error interno del servidor")
-
-    async def update_activity(
-        self,
-        activity_id: Annotated[str, Path()],
-        dto: UpdateActivityDTO,
-        current_user: Annotated[dict, Depends(get_current_user)]
-    ) -> SuccessResponse[ActivityResponseDTO]:
-        """Actualizar actividad existente"""
-        try:
-            validation_result = ValidationUtils.validate_uuid(activity_id)
-            if not validation_result.is_valid:
-                raise HTTPException(status_code=400, detail="ID de actividad inválido")
-
-            result = await self._update_activity_use_case.execute(
-                activity_id, dto, current_user["sub"]
-            )
-            
-            return SuccessResponse(
-                data=result,
-                message="Actividad actualizada exitosamente"
-            )
-            
-        except ValidationError as e:
-            raise HTTPException(status_code=400, detail=str(e))
-        except NotFoundError as e:
-            raise HTTPException(status_code=404, detail=str(e))
-        except ForbiddenError as e:
-            raise HTTPException(status_code=403, detail=str(e))
-        except Exception as e:
-            raise HTTPException(status_code=500, detail="Error interno del servidor")
-
-    async def delete_activity(
-        self,
-        activity_id: Annotated[str, Path()],
-        current_user: Annotated[dict, Depends(get_current_user)]
-    ) -> SuccessResponse[bool]:
-        """Eliminar actividad"""
-        try:
-            validation_result = ValidationUtils.validate_uuid(activity_id)
-            if not validation_result.is_valid:
-                raise HTTPException(status_code=400, detail="ID de actividad inválido")
-
-            result = await self._delete_activity_use_case.execute(activity_id, current_user["sub"])
-            
-            return SuccessResponse(
-                data=result,
-                message="Actividad eliminada exitosamente"
-            )
-            
-        except NotFoundError as e:
-            raise HTTPException(status_code=404, detail=str(e))
-        except ForbiddenError as e:
-            raise HTTPException(status_code=403, detail=str(e))
-        except Exception as e:
-            raise HTTPException(status_code=500, detail="Error interno del servidor")
-
-    async def change_activity_status(
-        self,
-        activity_id: Annotated[str, Path()],
-        dto: ChangeActivityStatusDTO,
-        current_user: Annotated[dict, Depends(get_current_user)]
-    ) -> SuccessResponse[ActivityResponseDTO]:
-        """Cambiar estado de actividad"""
-        try:
-            validation_result = ValidationUtils.validate_uuid(activity_id)
-            if not validation_result.is_valid:
-                raise HTTPException(status_code=400, detail="ID de actividad inválido")
-
-            result = await self._change_activity_status_use_case.execute(
-                activity_id, dto, current_user["sub"]
-            )
-            
-            return SuccessResponse(
-                data=result,
-                message="Estado de actividad actualizado exitosamente"
-            )
-            
-        except ValidationError as e:
-            raise HTTPException(status_code=400, detail=str(e))
         except NotFoundError as e:
             raise HTTPException(status_code=404, detail=str(e))
         except ForbiddenError as e:
@@ -175,26 +66,20 @@ class ActivityController:
             raise HTTPException(status_code=500, detail="Error interno del servidor")
 
     async def get_day_activities(
-        self,
-        day_id: Annotated[str, Path()],
-        current_user: Annotated[dict, Depends(get_current_user)],
+        self, 
+        day_id: str, 
+        current_user: dict, 
         include_stats: bool = True
-    ) -> SuccessResponse[DayActivitiesResponseDTO]:
-        """Obtener actividades de un día específico"""
+    ) -> SuccessResponse:
+        """Obtener actividades de un día"""
         try:
-            validation_result = ValidationUtils.validate_uuid(day_id)
-            if not validation_result.is_valid:
-                raise HTTPException(status_code=400, detail="ID de día inválido")
-
-            result = await self._get_day_activities_use_case.execute(
-                day_id, current_user["sub"], include_stats
+            activities = await self._get_day_activities_use_case.execute(
+                day_id, current_user["id"], include_stats
             )
-            
             return SuccessResponse(
-                data=result,
-                message="Actividades del día obtenidas exitosamente"
+                message="Actividades obtenidas exitosamente",
+                data=activities
             )
-            
         except NotFoundError as e:
             raise HTTPException(status_code=404, detail=str(e))
         except ForbiddenError as e:
@@ -202,29 +87,83 @@ class ActivityController:
         except Exception as e:
             raise HTTPException(status_code=500, detail="Error interno del servidor")
 
+    async def update_activity(
+        self, 
+        activity_id: str, 
+        dto: UpdateActivityDTO, 
+        current_user: dict
+    ) -> SuccessResponse:
+        """Actualizar actividad"""
+        try:
+            activity = await self._update_activity_use_case.execute(
+                activity_id, dto, current_user["id"]
+            )
+            return SuccessResponse(
+                message="Actividad actualizada exitosamente",
+                data=activity
+            )
+        except NotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+        except (ForbiddenError, ValidationError) as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        except Exception as e:
+            raise HTTPException(status_code=500, detail="Error interno del servidor")
+
+    async def change_activity_status(
+        self, 
+        activity_id: str, 
+        dto: ChangeActivityStatusDTO, 
+        current_user: dict
+    ) -> SuccessResponse:
+        """Cambiar estado de actividad"""
+        try:
+            activity = await self._change_activity_status_use_case.execute(
+                activity_id, dto, current_user["id"]
+            )
+            return SuccessResponse(
+                message="Estado de actividad actualizado exitosamente",
+                data=activity
+            )
+        except NotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+        except (ForbiddenError, ValidationError) as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        except Exception as e:
+            raise HTTPException(status_code=500, detail="Error interno del servidor")
+
     async def reorder_activities(
-        self,
-        day_id: Annotated[str, Path()],
-        dto: ReorderActivitiesDTO,
-        current_user: Annotated[dict, Depends(get_current_user)]
-    ) -> SuccessResponse[ReorderResponseDTO]:
+        self, 
+        day_id: str, 
+        dto: ReorderActivitiesDTO, 
+        current_user: dict
+    ) -> SuccessResponse:
         """Reordenar actividades de un día"""
         try:
-            validation_result = ValidationUtils.validate_uuid(day_id)
-            if not validation_result.is_valid:
-                raise HTTPException(status_code=400, detail="ID de día inválido")
-
-            result = await self._reorder_activities_use_case.execute(
-                day_id, dto, current_user["sub"]
+            activities = await self._reorder_activities_use_case.execute(
+                day_id, dto, current_user["id"]
             )
-            
             return SuccessResponse(
-                data=result,
-                message="Actividades reordenadas exitosamente"
+                message="Actividades reordenadas exitosamente",
+                data=activities
             )
-            
-        except ValidationError as e:
+        except NotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+        except (ForbiddenError, ValidationError) as e:
             raise HTTPException(status_code=400, detail=str(e))
+        except Exception as e:
+            raise HTTPException(status_code=500, detail="Error interno del servidor")
+
+    async def delete_activity(self, activity_id: str, current_user: dict) -> SuccessResponse:
+        """Eliminar actividad"""
+        try:
+            success = await self._delete_activity_use_case.execute(activity_id, current_user["id"])
+            if success:
+                return SuccessResponse(
+                    message="Actividad eliminada exitosamente",
+                    data={"deleted": True}
+                )
+            else:
+                raise HTTPException(status_code=400, detail="No se pudo eliminar la actividad")
         except NotFoundError as e:
             raise HTTPException(status_code=404, detail=str(e))
         except ForbiddenError as e:
