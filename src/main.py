@@ -90,7 +90,6 @@ app.include_router(diary_recommendation_router, prefix="/api/diary-recommendatio
 app.include_router(plan_reality_differences_router, prefix="/api/plan-reality-differences", tags=["Diferencias en el Plan y la Realidad"])
 app.include_router(upload_router, tags=["Archivos"])
 
-# Health check endpoint
 @app.get("/health", tags=["Sistema"], summary="Health Check")
 async def health_check():
     try:
