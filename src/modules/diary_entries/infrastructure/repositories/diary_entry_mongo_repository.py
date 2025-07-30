@@ -1,86 +1,92 @@
 from typing import List, Optional, Dict, Any
 from datetime import datetime
-from motor.motor_asyncio import AsyncIOMotorDatabase
-from bson import ObjectId
+from motor.motor_asyncio import AsyncIOMotorCollection
+from collections import Counter
 
-from ...domain.diary_entry import DiaryEntry, DiaryEntryData
+from ...domain.diary_entry import DiaryEntry
 from ...domain.interfaces.diary_entry_repository import IDiaryEntryRepository
 from shared.database.Connection import DatabaseConnection
 
 
 class DiaryEntryMongoRepository(IDiaryEntryRepository):
-    def __init__(self, db: AsyncIOMotorDatabase = None):
-        self._db = db or DatabaseConnection.get_database()
-        self._collection = self._db.diary_entries
+    def __init__(self):
+        self._db_connection = DatabaseConnection()
+        self._collection_name = "diary_entries"
+
+    async def _get_collection(self) -> AsyncIOMotorCollection:
+        database = self._db_connection.get_database()
+        return database[self._collection_name]
 
     async def create(self, diary_entry: DiaryEntry) -> DiaryEntry:
-        entry_data = self._entry_to_document(diary_entry.to_public_data())
-        
-        result = await self._collection.insert_one(entry_data)
-        entry_data["_id"] = result.inserted_id
-        
-        return self._document_to_entry(entry_data)
+        collection = await self._get_collection()
+        entry_data = diary_entry.to_dict()
+        await collection.insert_one(entry_data)
+        return diary_entry
 
     async def find_by_id(self, entry_id: str) -> Optional[DiaryEntry]:
-        try:
-            document = await self._collection.find_one({
-                "_id": ObjectId(entry_id),
-                "is_deleted": {"$ne": True}
-            })
-            
-            return self._document_to_entry(document) if document else None
-        except Exception:
-            return None
+        collection = await self._get_collection()
+        entry_data = await collection.find_one({
+            "id": entry_id,
+            "is_deleted": {"$ne": True}
+        })
+        
+        if entry_data:
+            return DiaryEntry.from_dict(entry_data)
+        return None
 
     async def update(self, diary_entry: DiaryEntry) -> DiaryEntry:
-        entry_data = self._entry_to_document(diary_entry.to_public_data())
-        entry_data.pop("_id", None)
+        collection = await self._get_collection()
+        entry_data = diary_entry.to_dict()
+        entry_data["updated_at"] = datetime.utcnow()
         
-        await self._collection.update_one(
-            {"_id": ObjectId(diary_entry.id)},
+        await collection.update_one(
+            {"id": diary_entry.id},
             {"$set": entry_data}
         )
-        
         return diary_entry
 
     async def delete(self, entry_id: str) -> bool:
-        result = await self._collection.update_one(
-            {"_id": ObjectId(entry_id)},
+        collection = await self._get_collection()
+        result = await collection.update_one(
+            {"id": entry_id},
             {"$set": {"is_deleted": True, "updated_at": datetime.utcnow()}}
         )
-        
         return result.modified_count > 0
 
     async def find_by_day_id(self, day_id: str) -> List[DiaryEntry]:
-        query = {
+        collection = await self._get_collection()
+        cursor = collection.find({
             "day_id": day_id,
             "is_deleted": {"$ne": True}
-        }
+        }).sort("created_at", 1)
         
-        cursor = self._collection.find(query).sort("created_at", 1)
-        documents = await cursor.to_list(length=None)
+        entries = []
+        async for entry_data in cursor:
+            entries.append(DiaryEntry.from_dict(entry_data))
         
-        return [self._document_to_entry(doc) for doc in documents]
+        return entries
 
     async def find_by_user_id(self, user_id: str) -> List[DiaryEntry]:
-        query = {
+        collection = await self._get_collection()
+        cursor = collection.find({
             "user_id": user_id,
             "is_deleted": {"$ne": True}
-        }
+        }).sort("created_at", -1)
         
-        cursor = self._collection.find(query).sort("created_at", -1)
-        documents = await cursor.to_list(length=None)
+        entries = []
+        async for entry_data in cursor:
+            entries.append(DiaryEntry.from_dict(entry_data))
         
-        return [self._document_to_entry(doc) for doc in documents]
+        return entries
 
     async def find_by_trip_id(self, trip_id: str) -> List[DiaryEntry]:
-        # Necesitamos hacer lookup con días para obtener entradas por trip_id
+        collection = await self._get_collection()
         pipeline = [
             {
                 "$lookup": {
                     "from": "days",
                     "localField": "day_id",
-                    "foreignField": "_id",
+                    "foreignField": "id",
                     "as": "day"
                 }
             },
@@ -95,39 +101,47 @@ class DiaryEntryMongoRepository(IDiaryEntryRepository):
             }
         ]
         
-        cursor = self._collection.aggregate(pipeline)
-        documents = await cursor.to_list(length=None)
+        cursor = collection.aggregate(pipeline)
+        entries = []
+        async for entry_data in cursor:
+            entries.append(DiaryEntry.from_dict(entry_data))
         
-        return [self._document_to_entry(doc) for doc in documents]
+        return entries
 
     async def find_by_user_and_day(self, user_id: str, day_id: str) -> Optional[DiaryEntry]:
-        document = await self._collection.find_one({
+        collection = await self._get_collection()
+        entry_data = await collection.find_one({
             "user_id": user_id,
             "day_id": day_id,
             "is_deleted": {"$ne": True}
         })
         
-        return self._document_to_entry(document) if document else None
+        if entry_data:
+            return DiaryEntry.from_dict(entry_data)
+        return None
 
     async def count_by_day_id(self, day_id: str) -> int:
-        return await self._collection.count_documents({
+        collection = await self._get_collection()
+        return await collection.count_documents({
             "day_id": day_id,
             "is_deleted": {"$ne": True}
         })
 
     async def count_by_user_id(self, user_id: str) -> int:
-        return await self._collection.count_documents({
+        collection = await self._get_collection()
+        return await collection.count_documents({
             "user_id": user_id,
             "is_deleted": {"$ne": True}
         })
 
     async def count_by_trip_id(self, trip_id: str) -> int:
+        collection = await self._get_collection()
         pipeline = [
             {
                 "$lookup": {
                     "from": "days",
                     "localField": "day_id",
-                    "foreignField": "_id",
+                    "foreignField": "id",
                     "as": "day"
                 }
             },
@@ -142,151 +156,120 @@ class DiaryEntryMongoRepository(IDiaryEntryRepository):
             }
         ]
         
-        result = await self._collection.aggregate(pipeline).to_list(length=1)
+        cursor = collection.aggregate(pipeline)
+        result = await cursor.to_list(1)
         return result[0]["total"] if result else 0
 
-    async def get_user_diary_statistics(self, user_id: str) -> Dict[str, Any]:
+    async def count_by_user_and_trip(self, user_id: str, trip_id: str) -> int:
+        collection = await self._get_collection()
         pipeline = [
+            {
+                "$lookup": {
+                    "from": "days",
+                    "localField": "day_id",
+                    "foreignField": "id",
+                    "as": "day"
+                }
+            },
             {
                 "$match": {
                     "user_id": user_id,
+                    "day.trip_id": trip_id,
                     "is_deleted": {"$ne": True}
                 }
             },
             {
-                "$group": {
-                    "_id": None,
-                    "total_entries": {"$sum": 1},
-                    "entries_with_emotions": {
-                        "$sum": {"$cond": [{"$ne": ["$emotions", None]}, 1, 0]}
-                    },
-                    "all_emotions": {"$push": "$emotions.emotions"}
-                }
+                "$count": "total"
             }
         ]
         
-        result = await self._collection.aggregate(pipeline).to_list(length=1)
+        cursor = collection.aggregate(pipeline)
+        result = await cursor.to_list(1)
+        return result[0]["total"] if result else 0
+
+    async def get_user_diary_statistics(self, user_id: str) -> Dict[str, Any]:
+        entries = await self.find_by_user_id(user_id)
         
-        if not result:
+        if not entries:
             return {
                 "total_entries": 0,
+                "total_words": 0,
+                "average_words_per_entry": 0.0,
+                "most_common_emotion": None,
                 "entries_with_emotions": 0,
-                "emotion_distribution": {},
-                "most_common_emotion": None
+                "emotion_distribution": {}
             }
         
-        stats = result[0]
+        total_words = sum(len(entry.content.split()) for entry in entries if entry.content)
+        all_emotions = []
+        entries_with_emotions = 0
         
-        # Procesar distribución de emociones
-        emotion_counts = {}
-        for emotion_list in stats.get("all_emotions", []):
-            if emotion_list:
-                for emotion in emotion_list:
-                    if emotion and "type" in emotion:
-                        emotion_type = emotion["type"]
-                        emotion_counts[emotion_type] = emotion_counts.get(emotion_type, 0) + 1
+        for entry in entries:
+            if entry.emotions:
+                all_emotions.extend(entry.emotions)
+                entries_with_emotions += 1
         
-        most_common_emotion = max(emotion_counts.items(), key=lambda x: x[1])[0] if emotion_counts else None
+        emotion_counter = Counter(all_emotions)
+        most_common = emotion_counter.most_common(1)
         
         return {
-            "total_entries": stats.get("total_entries", 0),
-            "entries_with_emotions": stats.get("entries_with_emotions", 0),
-            "emotion_distribution": emotion_counts,
-            "most_common_emotion": most_common_emotion
+            "total_entries": len(entries),
+            "total_words": total_words,
+            "average_words_per_entry": total_words / len(entries) if entries else 0.0,
+            "most_common_emotion": most_common[0][0] if most_common else None,
+            "entries_with_emotions": entries_with_emotions,
+            "emotion_distribution": dict(emotion_counter)
         }
 
     async def get_trip_diary_statistics(self, trip_id: str) -> Dict[str, Any]:
-        pipeline = [
-            {
-                "$lookup": {
-                    "from": "days",
-                    "localField": "day_id",
-                    "foreignField": "_id",
-                    "as": "day"
-                }
-            },
-            {
-                "$match": {
-                    "day.trip_id": trip_id,
-                    "is_deleted": {"$ne": True}
-                }
-            },
-            {
-                "$group": {
-                    "_id": None,
-                    "total_entries": {"$sum": 1},
-                    "entries_with_emotions": {
-                        "$sum": {"$cond": [{"$ne": ["$emotions", None]}, 1, 0]}
-                    },
-                    "contributors": {"$addToSet": "$user_id"},
-                    "all_emotions": {"$push": "$emotions.emotions"}
-                }
-            }
-        ]
+        entries = await self.find_by_trip_id(trip_id)
         
-        result = await self._collection.aggregate(pipeline).to_list(length=1)
-        
-        if not result:
+        if not entries:
             return {
                 "total_entries": 0,
+                "total_words": 0,
+                "average_words_per_entry": 0.0,
+                "most_common_emotion": None,
                 "entries_with_emotions": 0,
-                "active_contributors": 0,
-                "emotion_distribution": {},
-                "most_common_emotion": None
+                "entries_by_day": {},
+                "emotion_distribution": {}
             }
         
-        stats = result[0]
+        total_words = sum(len(entry.content.split()) for entry in entries if entry.content)
+        all_emotions = []
+        entries_with_emotions = 0
+        entries_by_day = {}
         
-        # Procesar distribución de emociones
-        emotion_counts = {}
-        for emotion_list in stats.get("all_emotions", []):
-            if emotion_list:
-                for emotion in emotion_list:
-                    if emotion and "type" in emotion:
-                        emotion_type = emotion["type"]
-                        emotion_counts[emotion_type] = emotion_counts.get(emotion_type, 0) + 1
+        for entry in entries:
+            if entry.emotions:
+                all_emotions.extend(entry.emotions)
+                entries_with_emotions += 1
+            
+            day_key = entry.day_id
+            entries_by_day[day_key] = entries_by_day.get(day_key, 0) + 1
         
-        most_common_emotion = max(emotion_counts.items(), key=lambda x: x[1])[0] if emotion_counts else None
+        emotion_counter = Counter(all_emotions)
+        most_common = emotion_counter.most_common(1)
         
         return {
-            "total_entries": stats.get("total_entries", 0),
-            "entries_with_emotions": stats.get("entries_with_emotions", 0),
-            "active_contributors": len(stats.get("contributors", [])),
-            "emotion_distribution": emotion_counts,
-            "most_common_emotion": most_common_emotion
+            "total_entries": len(entries),
+            "total_words": total_words,
+            "average_words_per_entry": total_words / len(entries) if entries else 0.0,
+            "most_common_emotion": most_common[0][0] if most_common else None,
+            "entries_with_emotions": entries_with_emotions,
+            "entries_by_day": entries_by_day,
+            "emotion_distribution": dict(emotion_counter)
         }
 
     async def find_entries_with_emotions(self, trip_id: str) -> List[DiaryEntry]:
-        pipeline = [
-            {
-                "$lookup": {
-                    "from": "days",
-                    "localField": "day_id",
-                    "foreignField": "_id",
-                    "as": "day"
-                }
-            },
-            {
-                "$match": {
-                    "day.trip_id": trip_id,
-                    "is_deleted": {"$ne": True},
-                    "emotions": {"$ne": None, "$exists": True}
-                }
-            },
-            {
-                "$sort": {"created_at": -1}
-            }
-        ]
-        
-        cursor = self._collection.aggregate(pipeline)
-        documents = await cursor.to_list(length=None)
-        
-        return [self._document_to_entry(doc) for doc in documents]
+        entries = await self.find_by_trip_id(trip_id)
+        return [entry for entry in entries if entry.emotions]
 
     async def find_entries_by_emotion_type(self, emotion_type: str, trip_id: Optional[str] = None) -> List[DiaryEntry]:
-        match_query = {
-            "is_deleted": {"$ne": True},
-            "emotions.emotions.type": emotion_type
+        collection = await self._get_collection()
+        query = {
+            "emotions": emotion_type.lower(),
+            "is_deleted": {"$ne": True}
         }
         
         if trip_id:
@@ -295,13 +278,13 @@ class DiaryEntryMongoRepository(IDiaryEntryRepository):
                     "$lookup": {
                         "from": "days",
                         "localField": "day_id",
-                        "foreignField": "_id",
+                        "foreignField": "id",
                         "as": "day"
                     }
                 },
                 {
                     "$match": {
-                        **match_query,
+                        **query,
                         "day.trip_id": trip_id
                     }
                 },
@@ -310,251 +293,86 @@ class DiaryEntryMongoRepository(IDiaryEntryRepository):
                 }
             ]
             
-            cursor = self._collection.aggregate(pipeline)
+            cursor = collection.aggregate(pipeline)
+            entries = []
+            async for entry_data in cursor:
+                entries.append(DiaryEntry.from_dict(entry_data))
+            return entries
         else:
-            cursor = self._collection.find(match_query).sort("created_at", -1)
-        
-        documents = await cursor.to_list(length=None)
-        return [self._document_to_entry(doc) for doc in documents]
+            cursor = collection.find(query).sort("created_at", -1)
+            entries = []
+            async for entry_data in cursor:
+                entries.append(DiaryEntry.from_dict(entry_data))
+            return entries
 
-    async def search_entries(
-        self, 
-        query: str, 
-        user_id: Optional[str] = None,
-        trip_id: Optional[str] = None,
-        day_id: Optional[str] = None
-    ) -> List[DiaryEntry]:
-        search_query = {
-            "content": {"$regex": query, "$options": "i"},
-            "is_deleted": {"$ne": True}
-        }
+    async def get_most_active_writers(self, trip_id: str, limit: int = 5) -> List[Dict[str, Any]]:
+        entries = await self.find_by_trip_id(trip_id)
+        user_stats = {}
         
-        if user_id:
-            search_query["user_id"] = user_id
-        
-        if day_id:
-            search_query["day_id"] = day_id
-        
-        if trip_id and not day_id:
-            pipeline = [
-                {
-                    "$lookup": {
-                        "from": "days",
-                        "localField": "day_id",
-                        "foreignField": "_id",
-                        "as": "day"
-                    }
-                },
-                {
-                    "$match": {
-                        **search_query,
-                        "day.trip_id": trip_id
-                    }
-                },
-                {
-                    "$sort": {"created_at": -1}
+        for entry in entries:
+            user_id = entry.user_id
+            if user_id not in user_stats:
+                user_stats[user_id] = {
+                    "_id": user_id,
+                    "entries_count": 0,
+                    "total_words": 0
                 }
-            ]
             
-            cursor = self._collection.aggregate(pipeline)
-        else:
-            cursor = self._collection.find(search_query).sort("created_at", -1)
+            user_stats[user_id]["entries_count"] += 1
+            if entry.content:
+                user_stats[user_id]["total_words"] += len(entry.content.split())
         
-        documents = await cursor.to_list(length=None)
-        return [self._document_to_entry(doc) for doc in documents]
-
-    async def find_with_filters(
-        self, 
-        filters: Dict[str, Any], 
-        page: int = 1, 
-        limit: int = 20
-    ) -> tuple[List[DiaryEntry], int]:
-        query = {"is_deleted": {"$ne": True}}
-        
-        if filters.get("user_id"):
-            query["user_id"] = filters["user_id"]
-        
-        if filters.get("day_id"):
-            query["day_id"] = filters["day_id"]
-        
-        if filters.get("has_emotions") is True:
-            query["emotions"] = {"$ne": None, "$exists": True}
-        elif filters.get("has_emotions") is False:
-            query["$or"] = [
-                {"emotions": {"$exists": False}},
-                {"emotions": None}
-            ]
-        
-        if filters.get("emotion_type"):
-            query["emotions.emotions.type"] = filters["emotion_type"]
-        
-        skip = (page - 1) * limit
-        
-        cursor = self._collection.find(query).sort("created_at", -1).skip(skip).limit(limit)
-        documents = await cursor.to_list(length=limit)
-        
-        total = await self._collection.count_documents(query)
-        
-        entries = [self._document_to_entry(doc) for doc in documents]
-        return entries, total
-
-    async def delete_by_day_id(self, day_id: str) -> bool:
-        result = await self._collection.update_many(
-            {"day_id": day_id},
-            {"$set": {"is_deleted": True, "updated_at": datetime.utcnow()}}
+        sorted_users = sorted(
+            user_stats.values(),
+            key=lambda x: x["entries_count"],
+            reverse=True
         )
         
-        return result.modified_count > 0
+        return sorted_users[:limit]
 
-    async def delete_by_trip_id(self, trip_id: str) -> bool:
-        pipeline_match = [
+    async def get_emotion_trends_by_trip(self, trip_id: str) -> Dict[str, Any]:
+        entries = await self.find_by_trip_id(trip_id)
+        emotion_counts = Counter()
+        
+        for entry in entries:
+            if entry.emotions:
+                for emotion in entry.emotions:
+                    emotion_counts[emotion] += 1
+        
+        trends = [
             {
-                "$lookup": {
-                    "from": "days",
-                    "localField": "day_id",
-                    "foreignField": "_id",
-                    "as": "day"
-                }
-            },
-            {
-                "$match": {
-                    "day.trip_id": trip_id
-                }
+                "_id": emotion,
+                "total": count,
+                "timeline": []
             }
+            for emotion, count in emotion_counts.most_common()
         ]
         
-        cursor = self._collection.aggregate(pipeline_match)
-        entries = await cursor.to_list(length=None)
-        
-        entry_ids = [ObjectId(entry["_id"]) for entry in entries]
-        
-        if entry_ids:
-            result = await self._collection.update_many(
-                {"_id": {"$in": entry_ids}},
-                {"$set": {"is_deleted": True, "updated_at": datetime.utcnow()}}
-            )
-            return result.modified_count > 0
-        
-        return False
-
-    async def get_most_active_days(self, trip_id: str, limit: int = 5) -> List[Dict[str, Any]]:
-        pipeline = [
-            {
-                "$lookup": {
-                    "from": "days",
-                    "localField": "day_id",
-                    "foreignField": "_id",
-                    "as": "day"
-                }
-            },
-            {
-                "$match": {
-                    "day.trip_id": trip_id,
-                    "is_deleted": {"$ne": True}
-                }
-            },
-            {
-                "$group": {
-                    "_id": "$day_id",
-                    "entry_count": {"$sum": 1},
-                    "day_info": {"$first": "$day"}
-                }
-            },
-            {
-                "$sort": {"entry_count": -1}
-            },
-            {
-                "$limit": limit
-            }
-        ]
-        
-        cursor = self._collection.aggregate(pipeline)
-        results = await cursor.to_list(length=limit)
-        
-        return [{
-            "day_id": str(result["_id"]),
-            "entry_count": result["entry_count"],
-            "day_date": result["day_info"][0]["date"] if result["day_info"] else None
-        } for result in results]
-
-    async def get_emotion_trends(self, trip_id: str) -> Dict[str, Any]:
-        pipeline = [
-            {
-                "$lookup": {
-                    "from": "days",
-                    "localField": "day_id",
-                    "foreignField": "_id",
-                    "as": "day"
-                }
-            },
-            {
-                "$match": {
-                    "day.trip_id": trip_id,
-                    "is_deleted": {"$ne": True},
-                    "emotions": {"$ne": None, "$exists": True}
-                }
-            },
-            {
-                "$unwind": "$emotions.emotions"
-            },
-            {
-                "$group": {
-                    "_id": {
-                        "emotion_type": "$emotions.emotions.type",
-                        "date": {"$dateToString": {"format": "%Y-%m-%d", "date": "$created_at"}}
-                    },
-                    "average_intensity": {"$avg": "$emotions.emotions.intensity"},
-                    "count": {"$sum": 1}
-                }
-            },
-            {
-                "$sort": {"_id.date": 1}
-            }
-        ]
-        
-        cursor = self._collection.aggregate(pipeline)
-        results = await cursor.to_list(length=None)
-        
-        # Organizar resultados por tipo de emoción
-        trends = {}
-        for result in results:
-            emotion_type = result["_id"]["emotion_type"]
-            date = result["_id"]["date"]
-            
-            if emotion_type not in trends:
-                trends[emotion_type] = []
-            
-            trends[emotion_type].append({
-                "date": date,
-                "average_intensity": result["average_intensity"],
-                "count": result["count"]
-            })
-        
-        return trends
-
-    def _entry_to_document(self, entry_data: DiaryEntryData) -> Dict[str, Any]:
-        """Convertir DiaryEntryData a documento MongoDB"""
         return {
-            "day_id": entry_data.day_id,
-            "user_id": entry_data.user_id,
-            "content": entry_data.content,
-            "emotions": entry_data.emotions,
-            "is_deleted": entry_data.is_deleted,
-            "created_at": entry_data.created_at,
-            "updated_at": entry_data.updated_at
+            "trends": trends,
+            "total_emotions": sum(emotion_counts.values())
         }
 
-    def _document_to_entry(self, document: Dict[str, Any]) -> DiaryEntry:
-        """Convertir documento MongoDB a DiaryEntry"""
-        data = DiaryEntryData(
-            id=str(document["_id"]),
-            day_id=document["day_id"],
-            user_id=document["user_id"],
-            content=document["content"],
-            emotions=document.get("emotions"),
-            is_deleted=document.get("is_deleted", False),
-            created_at=document["created_at"],
-            updated_at=document["updated_at"]
-        )
+    async def find_entries_by_date_range(
+        self,
+        trip_id: str,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None
+    ) -> List[DiaryEntry]:
+        entries = await self.find_by_trip_id(trip_id)
         
-        return DiaryEntry(data)
+        if start_date or end_date:
+            filtered_entries = []
+            for entry in entries:
+                entry_date = entry.created_at
+                
+                if start_date and entry_date < datetime.fromisoformat(start_date):
+                    continue
+                if end_date and entry_date > datetime.fromisoformat(end_date):
+                    continue
+                
+                filtered_entries.append(entry)
+            
+            return filtered_entries
+        
+        return entries

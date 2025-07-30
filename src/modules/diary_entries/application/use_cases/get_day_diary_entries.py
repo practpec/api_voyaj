@@ -1,10 +1,10 @@
 from typing import List
-from ..dtos.diary_entry_dto import DayDiaryEntriesResponseDTO, DiaryEntryListResponseDTO, DiaryEntryDTOMapper
+from ..dtos.diary_entry_dto import DiaryEntryResponseDTO, DiaryEntryDTOMapper
 from ...domain.diary_entry_service import DiaryEntryService
 from ...domain.interfaces.diary_entry_repository import IDiaryEntryRepository
-from modules.days.domain.interfaces.day_repository import IDayRepository
 from modules.trips.domain.interfaces.trip_member_repository import ITripMemberRepository
 from modules.users.domain.interfaces.IUserRepository import IUserRepository
+from modules.days.domain.interfaces.day_repository import IDayRepository
 from shared.errors.custom_errors import NotFoundError, ForbiddenError
 
 
@@ -23,67 +23,43 @@ class GetDayDiaryEntriesUseCase:
         self._user_repository = user_repository
         self._diary_entry_service = diary_entry_service
 
-    async def execute(
-        self, 
-        day_id: str, 
-        user_id: str, 
-        include_stats: bool = True
-    ) -> DayDiaryEntriesResponseDTO:
-        """Obtener todas las entradas de diario de un día específico"""
-        
-        # Validar que el día existe
+    async def execute(self, day_id: str, user_id: str) -> List[DiaryEntryResponseDTO]:
         day = await self._day_repository.find_by_id(day_id)
-        if not day or not day.is_active():
+        if not day:
             raise NotFoundError("Día no encontrado")
 
-        # Validar permisos del usuario para ver entradas del día
-        has_permission = await self._diary_entry_service.validate_user_can_view_day_entries(
-            day_id, 
-            user_id
+        trip_member = await self._trip_member_repository.find_by_trip_and_user(
+            day.trip_id, user_id
         )
-        
-        if not has_permission:
-            raise ForbiddenError("No tienes permisos para ver las entradas de este día")
+        if not trip_member:
+            raise ForbiddenError("No tienes acceso a este día")
 
-        # Obtener entradas del día
         entries = await self._diary_entry_repository.find_by_day_id(day_id)
 
-        # Obtener información de autores únicos
-        user_ids = list(set(entry.user_id for entry in entries))
-        users_info = {}
-        for uid in user_ids:
-            user = await self._user_repository.find_by_id(uid)
-            if user:
-                users_info[uid] = {
-                    "id": user.id,
-                    "full_name": user.get_full_name(),
-                    "avatar_url": user.avatar_url
+        user_permissions = {}
+        authors_info = {}
+        author_ids = set()
+
+        for entry in entries:
+            author_ids.add(entry.user_id)
+            user_permissions[entry.id] = {
+                "can_edit": entry.user_id == user_id,
+                "can_delete": entry.user_id == user_id
+            }
+
+        for author_id in author_ids:
+            author = await self._user_repository.find_by_id(author_id)
+            if author:
+                authors_info[author_id] = {
+                    "id": author.id,
+                    "full_name": author.nombre,
+                    "avatar_url": author.url_foto_perfil
                 }
 
-        # Mapear entradas a DTOs de respuesta
-        entry_responses: List[DiaryEntryListResponseDTO] = []
-        for entry in entries:
-            can_edit = entry.can_be_edited_by(user_id)
-            author_info = users_info.get(entry.user_id)
+        entries_data = [entry.to_public_data() for entry in entries]
 
-            entry_response = DiaryEntryDTOMapper.to_diary_entry_list_response(
-                entry.to_public_data(),
-                can_edit=can_edit,
-                author_info=author_info,
-                word_count=entry.get_word_count(),
-                dominant_emotion=entry.get_dominant_emotion()
-            )
-            entry_responses.append(entry_response)
-
-        # Obtener estadísticas si se solicitan
-        stats = {}
-        if include_stats:
-            stats = await self._diary_entry_service.get_day_diary_statistics(day_id)
-
-        # Crear respuesta completa
-        return DiaryEntryDTOMapper.to_day_diary_entries_response(
-            day_id=day_id,
-            day_date=day._data.date.isoformat(),
-            entries=entry_responses,
-            stats=stats
+        return DiaryEntryDTOMapper.to_diary_entries_list(
+            entries_data,
+            user_permissions=user_permissions,
+            authors_info=authors_info
         )

@@ -29,14 +29,12 @@ class UpdateDiaryEntryUseCase:
         dto: UpdateDiaryEntryDTO, 
         user_id: str
     ) -> DiaryEntryResponseDTO:
-        """Actualizar entrada de diario existente"""
         entry = await self._diary_entry_repository.find_by_id(entry_id)
         if not entry or not entry.is_active():
             raise NotFoundError("Entrada de diario no encontrada")
 
         trip_id = await self._diary_entry_service.validate_entry_update(entry, user_id)
 
-        # Determinar qué campos se van a actualizar
         updated_fields = []
         old_word_count = entry.get_word_count()
         
@@ -48,20 +46,17 @@ class UpdateDiaryEntryUseCase:
             entry.update_emotions(dto.emotions)
             updated_fields.append("emotions")
 
-        # Actualizar en repositorio
         updated_entry = await self._diary_entry_repository.update(entry)
 
-        # Obtener información del autor
         author_info = None
         author = await self._user_repository.find_by_id(entry.user_id)
         if author:
             author_info = {
                 "id": author.id,
-                "full_name": author.get_full_name(),
-                "avatar_url": author.avatar_url
+                "full_name": author.nombre,
+                "avatar_url": author.url_foto_perfil
             }
 
-        # Emitir evento
         event = DiaryEntryUpdatedEvent(
             trip_id=trip_id,
             day_id=entry.day_id,

@@ -20,57 +20,37 @@ class AddEmotionUseCase:
         self._diary_entry_service = diary_entry_service
         self._event_bus = event_bus
 
-    async def execute(
-        self, 
-        entry_id: str, 
-        dto: AddEmotionDTO, 
-        user_id: str
-    ) -> DiaryEntryResponseDTO:
-        """Agregar emoción a una entrada de diario"""
+    async def execute(self, entry_id: str, dto: AddEmotionDTO, user_id: str) -> DiaryEntryResponseDTO:
         entry = await self._diary_entry_repository.find_by_id(entry_id)
         if not entry or not entry.is_active():
             raise NotFoundError("Entrada de diario no encontrada")
 
         trip_id = await self._diary_entry_service.validate_entry_update(entry, user_id)
 
-        # Agregar emoción
-        entry.add_emotion(
-            emotion_type=dto.emotion_type,
-            intensity=dto.intensity,
-            note=dto.note
-        )
-
-        # Actualizar en repositorio
+        entry.add_emotion(dto.emotion)
         updated_entry = await self._diary_entry_repository.update(entry)
 
-        # Obtener información del autor
         author_info = None
         author = await self._user_repository.find_by_id(entry.user_id)
         if author:
             author_info = {
                 "id": author.id,
-                "full_name": author.get_full_name(),
-                "avatar_url": author.avatar_url
+                "full_name": author.nombre,
+                "avatar_url": author.url_foto_perfil
             }
 
-        # Contar emociones
-        emotions_count = 0
-        if entry.emotions and "emotions" in entry.emotions:
-            emotions_count = len(entry.emotions["emotions"])
-
-        # Emitir evento
         event = DiaryEntryEmotionsUpdatedEvent(
             trip_id=trip_id,
             day_id=entry.day_id,
             entry_id=entry_id,
             user_id=user_id,
             dominant_emotion=updated_entry.get_dominant_emotion(),
-            emotions_count=emotions_count
+            emotions_count=len(updated_entry.emotions) if updated_entry.emotions else 0
         )
         await self._event_bus.publish(event)
 
         return DiaryEntryDTOMapper.to_diary_entry_response(
-            updated_entry.to_public_data(),
+            updated_entry.to_dict(),
             can_edit=True,
             can_delete=True,
             author_info=author_info,

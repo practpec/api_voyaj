@@ -81,7 +81,7 @@ app.include_router(friendship_router, prefix="/api/friendships", tags=["Amistade
 app.include_router(trip_router, prefix="/api/trips", tags=["Viajes"])
 app.include_router(day_router, prefix="/api/days", tags=["Días"])
 app.include_router(activity_router, prefix="/api/activities", tags=["Actividades"])
-app.include_router(diary_router, prefix="/api/diary", tags=["Diario"])
+app.include_router(diary_router, prefix="/api/diary-entries", tags=["Diario"])
 app.include_router(expense_router, prefix="/api/expenses", tags=["Gastos"])
 app.include_router(expense_split_routes, prefix="/api/expenses-split", tags=["Gastos Compartidos"])
 app.include_router(photo_router, prefix="/api/photos", tags=["Fotos"])

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, List
 from shared.events.base_event import DomainEvent
 
 
@@ -33,7 +33,7 @@ class DiaryEntryUpdatedEvent(DomainEvent):
     day_id: str = ""
     entry_id: str = ""
     user_id: str = ""
-    updated_fields: list = None
+    updated_fields: List[str] = None
     old_word_count: int = 0
     new_word_count: int = 0
     

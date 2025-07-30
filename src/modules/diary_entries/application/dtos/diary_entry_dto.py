@@ -1,108 +1,53 @@
-from dataclasses import dataclass
+from typing import Optional, List, Dict, Any
+from pydantic import BaseModel, Field
 from datetime import datetime
-from typing import Optional, Dict, Any, List
-from ...domain.diary_entry import DiaryEntryData, MoodType
 
 
-@dataclass
-class CreateDiaryEntryDTO:
-    day_id: str
-    content: str
-    emotions: Optional[Dict[str, Any]] = None
+class CreateDiaryEntryDTO(BaseModel):
+    day_id: str = Field(..., min_length=1)
+    content: str = Field(..., min_length=1)
+    emotions: Optional[List[str]] = None
 
 
-@dataclass
-class UpdateDiaryEntryDTO:
+class UpdateDiaryEntryDTO(BaseModel):
     content: Optional[str] = None
-    emotions: Optional[Dict[str, Any]] = None
+    emotions: Optional[List[str]] = None
 
 
-@dataclass
-class AddEmotionDTO:
-    emotion_type: str
-    intensity: int
-    note: Optional[str] = None
+class AddEmotionDTO(BaseModel):
+    emotion: str = Field(..., min_length=1)
 
 
-@dataclass
-class DiaryEntryResponseDTO:
+class DiaryEntryResponseDTO(BaseModel):
     id: str
     day_id: str
     user_id: str
     content: str
-    emotions: Optional[Dict[str, Any]]
+    emotions: Optional[List[str]] = None
     word_count: int
-    dominant_emotion: Optional[str]
+    dominant_emotion: Optional[str] = None
     can_edit: bool
     can_delete: bool
+    author_info: Optional[Dict[str, Any]] = None
+    is_deleted: bool
     created_at: datetime
     updated_at: datetime
-    author_info: Optional[Dict[str, Any]] = None
 
 
-@dataclass
-class DiaryEntryListResponseDTO:
-    id: str
-    day_id: str
-    user_id: str
-    content_preview: str  # Primeros 100 caracteres
-    word_count: int
-    dominant_emotion: Optional[str]
-    has_emotions: bool
-    can_edit: bool
-    created_at: datetime
-    updated_at: datetime
-    author_info: Optional[Dict[str, Any]] = None
-
-
-@dataclass
-class DayDiaryEntriesResponseDTO:
-    day_id: str
-    day_date: str
-    entries: List[DiaryEntryListResponseDTO]
+class DiaryEntryStatsDTO(BaseModel):
     total_entries: int
     total_words: int
+    average_words_per_entry: float
+    most_common_emotion: Optional[str] = None
     entries_with_emotions: int
+    entries_by_day: Dict[str, int]
     emotion_distribution: Dict[str, int]
 
 
-@dataclass
-class TripDiaryStatsDTO:
-    trip_id: str
-    total_entries: int
-    total_words: int
-    active_contributors: int
-    entries_with_emotions: int
-    most_common_emotion: Optional[str]
-    average_words_per_entry: float
-    user_contributions: Dict[str, Dict[str, int]]
-    emotion_trends: Dict[str, Any]
-
-
-@dataclass
-class EmotionSuggestionDTO:
-    suggested_emotions: List[str]
-    confidence_scores: Dict[str, float]
-
-
 class DiaryEntryDTOMapper:
-    
-    MOOD_LABELS = {
-        MoodType.VERY_HAPPY.value: "Muy Feliz",
-        MoodType.HAPPY.value: "Feliz",
-        MoodType.NEUTRAL.value: "Neutral",
-        MoodType.SAD.value: "Triste",
-        MoodType.VERY_SAD.value: "Muy Triste",
-        MoodType.EXCITED.value: "Emocionado",
-        MoodType.TIRED.value: "Cansado",
-        MoodType.RELAXED.value: "Relajado",
-        MoodType.ADVENTUROUS.value: "Aventurero",
-        MoodType.NOSTALGIC.value: "Nostálgico"
-    }
-
     @staticmethod
     def to_diary_entry_response(
-        entry_data: DiaryEntryData,
+        entry_data: Dict[str, Any],
         can_edit: bool = False,
         can_delete: bool = False,
         author_info: Optional[Dict[str, Any]] = None,
@@ -110,82 +55,34 @@ class DiaryEntryDTOMapper:
         dominant_emotion: Optional[str] = None
     ) -> DiaryEntryResponseDTO:
         return DiaryEntryResponseDTO(
-            id=entry_data.id,
-            day_id=entry_data.day_id,
-            user_id=entry_data.user_id,
-            content=entry_data.content,
-            emotions=entry_data.emotions,
+            id=entry_data["id"],
+            day_id=entry_data["day_id"],
+            user_id=entry_data["user_id"],
+            content=entry_data["content"],
+            emotions=entry_data.get("emotions"),
             word_count=word_count,
             dominant_emotion=dominant_emotion,
             can_edit=can_edit,
             can_delete=can_delete,
-            created_at=entry_data.created_at,
-            updated_at=entry_data.updated_at,
-            author_info=author_info
+            author_info=author_info,
+            is_deleted=entry_data.get("is_deleted", False),
+            created_at=entry_data["created_at"],
+            updated_at=entry_data["updated_at"]
         )
 
     @staticmethod
-    def to_diary_entry_list_response(
-        entry_data: DiaryEntryData,
-        can_edit: bool = False,
-        author_info: Optional[Dict[str, Any]] = None,
-        word_count: int = 0,
-        dominant_emotion: Optional[str] = None
-    ) -> DiaryEntryListResponseDTO:
-        # Crear preview del contenido (primeros 100 caracteres)
-        content_preview = (entry_data.content[:100] + "...") if len(entry_data.content) > 100 else entry_data.content
-        
-        return DiaryEntryListResponseDTO(
-            id=entry_data.id,
-            day_id=entry_data.day_id,
-            user_id=entry_data.user_id,
-            content_preview=content_preview,
-            word_count=word_count,
-            dominant_emotion=dominant_emotion,
-            has_emotions=bool(entry_data.emotions and entry_data.emotions.get("emotions")),
-            can_edit=can_edit,
-            created_at=entry_data.created_at,
-            updated_at=entry_data.updated_at,
-            author_info=author_info
-        )
-
-    @staticmethod
-    def to_day_diary_entries_response(
-        day_id: str,
-        day_date: str,
-        entries: List[DiaryEntryListResponseDTO],
-        stats: Dict[str, Any]
-    ) -> DayDiaryEntriesResponseDTO:
-        return DayDiaryEntriesResponseDTO(
-            day_id=day_id,
-            day_date=day_date,
-            entries=entries,
-            total_entries=stats.get("total_entries", 0),
-            total_words=stats.get("total_words", 0),
-            entries_with_emotions=stats.get("entries_with_emotions", 0),
-            emotion_distribution=stats.get("emotion_distribution", {})
-        )
-
-    @staticmethod
-    def to_trip_diary_stats(stats_data: Dict[str, Any]) -> TripDiaryStatsDTO:
-        return TripDiaryStatsDTO(
-            trip_id=stats_data.get("trip_id", ""),
-            total_entries=stats_data.get("total_entries", 0),
-            total_words=stats_data.get("total_words", 0),
-            active_contributors=len(stats_data.get("user_contributions", {})),
-            entries_with_emotions=stats_data.get("entries_with_emotions", 0),
-            most_common_emotion=stats_data.get("most_common_emotion"),
-            average_words_per_entry=stats_data.get("average_words_per_entry", 0.0),
-            user_contributions=stats_data.get("user_contributions", {}),
-            emotion_trends=stats_data.get("emotion_trends", {})
-        )
-
-    @staticmethod
-    def to_emotion_suggestion(
-        suggested_emotions: List[str],
-        confidence_scores: Optional[Dict[str, float]] = None
-    ) -> EmotionSuggestionDTO:
-        return EmotionSuggestionDTO(
-            suggested_emotions=suggested_emotions,
-            confidence_scores=confidence_scores or {}
-        )
+    def to_diary_entries_list(
+        entries_data: List[Dict[str, Any]],
+        user_permissions: Dict[str, Dict[str, bool]] = None,
+        authors_info: Dict[str, Dict[str, Any]] = None
+    ) -> List[DiaryEntryResponseDTO]:
+        return [
+            DiaryEntryDTOMapper.to_diary_entry_response(
+                entry_data,
+                can_edit=user_permissions.get(entry_data["id"], {}).get("can_edit", False),
+                can_delete=user_permissions.get(entry_data["id"], {}).get("can_delete", False),
+                author_info=authors_info.get(entry_data["user_id"]),
+                word_count=len(entry_data["content"].split()) if entry_data["content"] else 0
+            )
+            for entry_data in entries_data
+        ]

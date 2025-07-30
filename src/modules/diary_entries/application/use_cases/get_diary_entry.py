@@ -20,34 +20,23 @@ class GetDiaryEntryUseCase:
         self._diary_entry_service = diary_entry_service
 
     async def execute(self, entry_id: str, user_id: str) -> DiaryEntryResponseDTO:
-        """Obtener detalles de una entrada de diario específica"""
         entry = await self._diary_entry_repository.find_by_id(entry_id)
         if not entry or not entry.is_active():
             raise NotFoundError("Entrada de diario no encontrada")
 
-        # Validar permisos del usuario para ver la entrada
-        has_permission = await self._diary_entry_service.validate_user_can_view_entry(
-            entry, 
-            user_id
-        )
-        
-        if not has_permission:
-            raise ForbiddenError("No tienes permisos para ver esta entrada")
+        trip_id = await self._diary_entry_service.validate_entry_access(entry, user_id)
 
-        # Obtener información del autor
         author_info = None
-        if entry.user_id:
-            author = await self._user_repository.find_by_id(entry.user_id)
-            if author:
-                author_info = {
-                    "id": author.id,
-                    "full_name": author.get_full_name(),
-                    "avatar_url": author.avatar_url
-                }
+        author = await self._user_repository.find_by_id(entry.user_id)
+        if author:
+            author_info = {
+                "id": author.id,
+                "full_name": author.nombre,
+                "avatar_url": author.url_foto_perfil
+            }
 
-        # Determinar permisos del usuario actual
-        can_edit = entry.can_be_edited_by(user_id)
-        can_delete = entry.can_be_edited_by(user_id)
+        can_edit = entry.user_id == user_id
+        can_delete = entry.user_id == user_id
 
         return DiaryEntryDTOMapper.to_diary_entry_response(
             entry.to_public_data(),
