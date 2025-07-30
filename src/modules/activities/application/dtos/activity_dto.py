@@ -1,3 +1,4 @@
+# src/modules/activities/application/dtos/activity_dto.py
 from dataclasses import dataclass
 from datetime import datetime, time
 from typing import Optional, List, Dict, Any
@@ -29,13 +30,12 @@ class UpdateActivityDTO:
 
 @dataclass
 class ChangeActivityStatusDTO:
-    status: ActivityStatus
+    new_status: str  # Corregido: usar new_status
     actual_cost: Optional[float] = None
 
 
 @dataclass
 class ReorderActivitiesDTO:
-    day_id: str
     activity_orders: List[Dict[str, Any]]  # [{"activity_id": str, "order": int}]
 
 
@@ -150,13 +150,14 @@ class ActivityDTOMapper:
         can_change_status: bool = False,
         creator_info: Optional[Dict[str, Any]] = None
     ) -> ActivityResponseDTO:
-        # Calcular duración si hay horas de inicio y fin
+        # Calcular duración si hay horarios
         duration_minutes = None
         if activity.start_time and activity.end_time:
             start_minutes = activity.start_time.hour * 60 + activity.start_time.minute
             end_minutes = activity.end_time.hour * 60 + activity.end_time.minute
-            if end_minutes > start_minutes:
-                duration_minutes = end_minutes - start_minutes
+            duration_minutes = end_minutes - start_minutes
+            if duration_minutes < 0:  # Si cruza medianoche
+                duration_minutes += 24 * 60
 
         return ActivityResponseDTO(
             id=activity.id,
@@ -182,13 +183,14 @@ class ActivityDTOMapper:
 
     @staticmethod
     def to_activity_list_response(activity: ActivityData) -> ActivityListResponseDTO:
-        # Calcular duración
+        # Calcular duración si hay horarios
         duration_minutes = None
         if activity.start_time and activity.end_time:
             start_minutes = activity.start_time.hour * 60 + activity.start_time.minute
             end_minutes = activity.end_time.hour * 60 + activity.end_time.minute
-            if end_minutes > start_minutes:
-                duration_minutes = end_minutes - start_minutes
+            duration_minutes = end_minutes - start_minutes
+            if duration_minutes < 0:  # Si cruza medianoche
+                duration_minutes += 24 * 60
 
         return ActivityListResponseDTO(
             id=activity.id,
@@ -208,30 +210,33 @@ class ActivityDTOMapper:
         day_id: str,
         day_date: str,
         activities: List[ActivityListResponseDTO],
-        stats: Dict[str, Any]
+        stats: Optional[Dict[str, Any]] = None
     ) -> DayActivitiesResponseDTO:
+        if stats is None:
+            stats = {}
+            
         return DayActivitiesResponseDTO(
             day_id=day_id,
             day_date=day_date,
             activities=activities,
-            total_activities=stats.get("total_activities", 0),
-            completed_activities=stats.get("completed_activities", 0),
-            total_estimated_cost=stats.get("total_estimated_cost", 0.0),
-            total_actual_cost=stats.get("total_actual_cost", 0.0),
-            completion_percentage=stats.get("completion_percentage", 0.0)
+            total_activities=stats.get("total_activities", len(activities)),
+            completed_activities=stats.get("completed", 0),
+            total_estimated_cost=stats.get("estimated_cost", 0.0),
+            total_actual_cost=stats.get("actual_cost", 0.0),
+            completion_percentage=stats.get("progress_percentage", 0.0)
         )
 
     @staticmethod
     def to_activity_stats(stats_data: Dict[str, Any]) -> ActivityStatsDTO:
         return ActivityStatsDTO(
             total_activities=stats_data.get("total_activities", 0),
-            completed_activities=stats_data.get("completed_activities", 0),
-            in_progress_activities=stats_data.get("in_progress_activities", 0),
-            planned_activities=stats_data.get("planned_activities", 0),
-            cancelled_activities=stats_data.get("cancelled_activities", 0),
-            completion_percentage=stats_data.get("completion_percentage", 0.0),
-            total_estimated_cost=stats_data.get("total_estimated_cost", 0.0),
-            total_actual_cost=stats_data.get("total_actual_cost", 0.0),
+            completed_activities=stats_data.get("completed", 0),
+            in_progress_activities=stats_data.get("in_progress", 0),
+            planned_activities=stats_data.get("planned", 0),
+            cancelled_activities=stats_data.get("cancelled", 0),
+            completion_percentage=stats_data.get("progress_percentage", 0.0),
+            total_estimated_cost=stats_data.get("estimated_cost", 0.0),
+            total_actual_cost=stats_data.get("actual_cost", 0.0),
             activities_by_category=stats_data.get("activities_by_category", {})
         )
 

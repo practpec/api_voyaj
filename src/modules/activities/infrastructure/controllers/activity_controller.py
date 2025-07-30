@@ -1,3 +1,4 @@
+# src/modules/activities/infrastructure/controllers/activity_controller.py
 from fastapi import APIRouter, Depends, HTTPException, Query, Path
 from typing import Annotated, Optional
 from datetime import time
@@ -17,6 +18,7 @@ from ...application.use_cases.delete_activity import DeleteActivityUseCase
 from shared.middleware.AuthMiddleware import get_current_user
 from shared.utils.response_utils import SuccessResponse
 from shared.utils.validation_utils import ValidationUtils
+from shared.errors.custom_errors import NotFoundError, ForbiddenError, ValidationError
 
 
 class ActivityController:
@@ -38,8 +40,7 @@ class ActivityController:
         self._change_activity_status_use_case = change_activity_status_use_case
         self._reorder_activities_use_case = reorder_activities_use_case
         self._delete_activity_use_case = delete_activity_use_case
-        
-       
+
     async def create_activity(
         self,
         dto: CreateActivityDTO,
@@ -47,11 +48,6 @@ class ActivityController:
     ) -> SuccessResponse[ActivityResponseDTO]:
         """Crear nueva actividad"""
         try:
-            validation_result = ValidationUtils.validate_uuid(dto.day_id)
-
-            if not validation_result.is_valid:
-                raise HTTPException(status_code=400, detail="ID de día inválido")
-        
             result = await self._create_activity_use_case.execute(dto, current_user["sub"])
             
             return SuccessResponse(
@@ -59,8 +55,12 @@ class ActivityController:
                 message="Actividad creada exitosamente"
             )
             
-        except ValueError as e:
+        except ValidationError as e:
             raise HTTPException(status_code=400, detail=str(e))
+        except ForbiddenError as e:
+            raise HTTPException(status_code=403, detail=str(e))
+        except NotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e))
         except Exception as e:
             raise HTTPException(status_code=500, detail="Error interno del servidor")
 
@@ -69,7 +69,7 @@ class ActivityController:
         activity_id: Annotated[str, Path()],
         current_user: Annotated[dict, Depends(get_current_user)]
     ) -> SuccessResponse[ActivityResponseDTO]:
-        """Obtener actividad específica"""
+        """Obtener actividad por ID"""
         try:
             validation_result = ValidationUtils.validate_uuid(activity_id)
             if not validation_result.is_valid:
@@ -77,10 +77,15 @@ class ActivityController:
 
             result = await self._get_activity_use_case.execute(activity_id, current_user["sub"])
             
-            return SuccessResponse(data=result)
+            return SuccessResponse(
+                data=result,
+                message="Actividad obtenida exitosamente"
+            )
             
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e))
+        except NotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+        except ForbiddenError as e:
+            raise HTTPException(status_code=403, detail=str(e))
         except Exception as e:
             raise HTTPException(status_code=500, detail="Error interno del servidor")
 
@@ -105,8 +110,12 @@ class ActivityController:
                 message="Actividad actualizada exitosamente"
             )
             
-        except ValueError as e:
+        except ValidationError as e:
             raise HTTPException(status_code=400, detail=str(e))
+        except NotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+        except ForbiddenError as e:
+            raise HTTPException(status_code=403, detail=str(e))
         except Exception as e:
             raise HTTPException(status_code=500, detail="Error interno del servidor")
 
@@ -128,8 +137,10 @@ class ActivityController:
                 message="Actividad eliminada exitosamente"
             )
             
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e))
+        except NotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+        except ForbiddenError as e:
+            raise HTTPException(status_code=403, detail=str(e))
         except Exception as e:
             raise HTTPException(status_code=500, detail="Error interno del servidor")
 
@@ -154,8 +165,12 @@ class ActivityController:
                 message="Estado de actividad actualizado exitosamente"
             )
             
-        except ValueError as e:
+        except ValidationError as e:
             raise HTTPException(status_code=400, detail=str(e))
+        except NotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+        except ForbiddenError as e:
+            raise HTTPException(status_code=403, detail=str(e))
         except Exception as e:
             raise HTTPException(status_code=500, detail="Error interno del servidor")
 
@@ -165,21 +180,25 @@ class ActivityController:
         current_user: Annotated[dict, Depends(get_current_user)],
         include_stats: bool = True
     ) -> SuccessResponse[DayActivitiesResponseDTO]:
-        """Obtener todas las actividades de un día"""
+        """Obtener actividades de un día específico"""
         try:
             validation_result = ValidationUtils.validate_uuid(day_id)
             if not validation_result.is_valid:
                 raise HTTPException(status_code=400, detail="ID de día inválido")
 
-            result = await self._get_day_activities_use_case.execute(day_id, current_user["sub"])
+            result = await self._get_day_activities_use_case.execute(
+                day_id, current_user["sub"], include_stats
+            )
             
             return SuccessResponse(
                 data=result,
-                message="Actividades obtenidas exitosamente"
+                message="Actividades del día obtenidas exitosamente"
             )
             
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e))
+        except NotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+        except ForbiddenError as e:
+            raise HTTPException(status_code=403, detail=str(e))
         except Exception as e:
             raise HTTPException(status_code=500, detail="Error interno del servidor")
 
@@ -195,17 +214,20 @@ class ActivityController:
             if not validation_result.is_valid:
                 raise HTTPException(status_code=400, detail="ID de día inválido")
 
-            # Asegurar que el day_id del DTO coincida con el path
-            dto.day_id = day_id
-
-            result = await self._reorder_activities_use_case.execute(dto, current_user["sub"])
+            result = await self._reorder_activities_use_case.execute(
+                day_id, dto, current_user["sub"]
+            )
             
             return SuccessResponse(
                 data=result,
                 message="Actividades reordenadas exitosamente"
             )
             
-        except ValueError as e:
+        except ValidationError as e:
             raise HTTPException(status_code=400, detail=str(e))
+        except NotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+        except ForbiddenError as e:
+            raise HTTPException(status_code=403, detail=str(e))
         except Exception as e:
             raise HTTPException(status_code=500, detail="Error interno del servidor")

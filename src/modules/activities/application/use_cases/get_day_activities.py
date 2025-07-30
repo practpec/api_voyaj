@@ -1,3 +1,4 @@
+# src/modules/activities/application/use_cases/get_day_activities.py
 from typing import List
 from ..dtos.activity_dto import DayActivitiesResponseDTO, ActivityListResponseDTO, ActivityDTOMapper
 from ...domain.activity_service import ActivityService
@@ -17,18 +18,25 @@ class GetDayActivitiesUseCase:
         self._day_repository = day_repository
         self._activity_service = activity_service
 
-    async def execute(self, day_id: str, user_id: str) -> DayActivitiesResponseDTO:
+    async def execute(
+        self, 
+        day_id: str, 
+        user_id: str, 
+        include_stats: bool = True
+    ) -> DayActivitiesResponseDTO:
         """Obtener todas las actividades de un día específico"""
         day = await self._day_repository.find_by_id(day_id)
         if not day or not day.is_active():
             raise NotFoundError("Día no encontrado")
 
-        # Verificar acceso del usuario
+        # Verificar acceso del usuario al viaje
+        try:
+            await self._activity_service._validate_user_permissions(day.trip_id, user_id, "view_activities")
+        except Exception:
+            raise ForbiddenError("No tienes acceso a las actividades de este viaje")
+
+        # Obtener actividades del día ordenadas
         activities = await self._activity_repository.find_by_day_id_ordered(day_id)
-        if activities:
-            can_access = await self._activity_service.can_user_access_activity(activities[0], user_id)
-            if not can_access:
-                raise ForbiddenError("No tienes acceso a las actividades de este día")
 
         # Mapear actividades a DTOs
         activity_list_responses: List[ActivityListResponseDTO] = []
@@ -38,8 +46,10 @@ class GetDayActivitiesUseCase:
             )
             activity_list_responses.append(activity_response)
 
-        # Obtener estadísticas del día
-        stats = await self._activity_service.get_day_activity_statistics(day_id)
+        # Obtener estadísticas del día si se solicitan
+        stats = None
+        if include_stats:
+            stats = await self._activity_service.get_day_activity_statistics(day_id)
 
         # Formatear fecha del día
         day_date = day.date.strftime("%Y-%m-%d")

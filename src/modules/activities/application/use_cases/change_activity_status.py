@@ -1,3 +1,4 @@
+# src/modules/activities/application/use_cases/change_activity_status.py
 from ..dtos.activity_dto import ChangeActivityStatusDTO, ActivityResponseDTO, ActivityDTOMapper
 from ...domain.activity import ActivityStatus
 from ...domain.activity_service import ActivityService
@@ -37,68 +38,59 @@ class ChangeActivityStatusUseCase:
         if not activity or not activity.is_active():
             raise NotFoundError("Actividad no encontrada")
 
+        new_status = ActivityStatus(dto.new_status)
         trip_id = await self._activity_service.validate_activity_status_change(
-            activity, user_id, dto.status
+            activity, user_id, new_status
         )
 
-        old_status = activity.status
-        old_cost = activity.actual_cost
-
         # Cambiar estado según el tipo
-        if dto.status == ActivityStatus.IN_PROGRESS:
+        if new_status == ActivityStatus.IN_PROGRESS:
             activity.start_activity()
-            
-            # Emitir evento de inicio
-            start_event = ActivityStartedEvent(
+            event = ActivityStartedEvent(
                 trip_id=trip_id,
                 day_id=activity.day_id,
                 activity_id=activity_id,
                 started_by=user_id
             )
-            await self._event_bus.publish(start_event)
-
-        elif dto.status == ActivityStatus.COMPLETED:
+        elif new_status == ActivityStatus.COMPLETED:
             activity.complete_activity(dto.actual_cost)
-            
-            # Emitir evento de completado
-            complete_event = ActivityCompletedEvent(
+            event = ActivityCompletedEvent(
                 trip_id=trip_id,
                 day_id=activity.day_id,
                 activity_id=activity_id,
                 completed_by=user_id,
                 actual_cost=dto.actual_cost
             )
-            await self._event_bus.publish(complete_event)
-
-            # Si se actualizó el costo, emitir evento de costo
-            if dto.actual_cost is not None and dto.actual_cost != old_cost:
+            # Si se especificó costo real, emitir evento adicional
+            if dto.actual_cost is not None:
                 cost_event = ActivityCostUpdatedEvent(
                     trip_id=trip_id,
                     day_id=activity.day_id,
                     activity_id=activity_id,
-                    old_cost=old_cost,
+                    old_cost=activity.estimated_cost,
                     new_cost=dto.actual_cost,
                     updated_by=user_id
                 )
                 await self._event_bus.publish(cost_event)
-
-        elif dto.status == ActivityStatus.CANCELLED:
+        elif new_status == ActivityStatus.CANCELLED:
             activity.cancel_activity()
-            
-            # Emitir evento de cancelación
-            cancel_event = ActivityCancelledEvent(
+            event = ActivityCancelledEvent(
                 trip_id=trip_id,
                 day_id=activity.day_id,
                 activity_id=activity_id,
                 cancelled_by=user_id
             )
-            await self._event_bus.publish(cancel_event)
-
         else:
-            # Cambio de estado genérico
-            activity.change_status(dto.status)
+            # Para estado PLANNED, simplemente cambiar estado
+            activity.change_status(new_status)
+            event = None
 
+        # Actualizar actividad
         updated_activity = await self._activity_repository.update(activity)
+
+        # Emitir evento si se creó
+        if event:
+            await self._event_bus.publish(event)
 
         # Determinar permisos del usuario
         member = await self._trip_member_repository.find_by_trip_and_user(trip_id, user_id)
@@ -107,7 +99,7 @@ class ChangeActivityStatusUseCase:
 
         # Obtener información del creador
         creator_user = await self._user_repository.find_by_id(activity.created_by)
-        creator_info = creator_user.to_public_data() if creator_user else None
+        creator_info = creator_user.to_public_dict() if creator_user else None
 
         return ActivityDTOMapper.to_activity_response(
             updated_activity.to_public_data(),

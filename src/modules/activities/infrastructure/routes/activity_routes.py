@@ -39,7 +39,7 @@ def get_activity_controller():
     
     get_activity_use_case = GetActivityUseCase(
         activity_repository=activity_repo,
-        day_repository= day_repo,
+        day_repository=day_repo,
         trip_member_repository=trip_member_repo,
         user_repository=user_repo,
         activity_service=activity_service
@@ -69,6 +69,7 @@ def get_activity_controller():
     
     reorder_activities_use_case = ReorderActivitiesUseCase(
         activity_repository=activity_repo,
+        day_repository=day_repo,
         activity_service=activity_service,
         event_bus=event_bus
     )

@@ -171,31 +171,7 @@ class ActivityService:
         except:
             return False
 
-    async def get_day_activity_statistics(
-        self,
-        day_id: str
-    ) -> dict:
-        """Obtener estadísticas de actividades del día"""
-        activities = await self._activity_repository.find_by_day_id(day_id)
-        
-        total_activities = len(activities)
-        completed_activities = len([a for a in activities if a.is_completed()])
-        in_progress_activities = len([a for a in activities if a.is_in_progress()])
-        planned_activities = len([a for a in activities if a.is_planned()])
-        
-        total_estimated_cost = sum(a.estimated_cost for a in activities if a.estimated_cost)
-        total_actual_cost = sum(a.actual_cost for a in activities if a.actual_cost)
-        
-        return {
-            "total_activities": total_activities,
-            "completed_activities": completed_activities,
-            "in_progress_activities": in_progress_activities,
-            "planned_activities": planned_activities,
-            "completion_percentage": (completed_activities / total_activities * 100) if total_activities > 0 else 0,
-            "total_estimated_cost": total_estimated_cost,
-            "total_actual_cost": total_actual_cost
-        }
-
+   
     async def get_trip_activity_summary(
         self,
         trip_id: str
@@ -219,3 +195,57 @@ class ActivityService:
             "completion_percentage": (completed_activities / total_activities * 100) if total_activities > 0 else 0,
             "activities_by_category": categories
         }
+    
+    # src/modules/activities/domain/activity_service.py (métodos faltantes)
+
+    async def get_day_activity_statistics(self, day_id: str) -> dict:
+        """Obtener estadísticas de actividades del día"""
+        activities = await self._activity_repository.find_by_day_id_ordered(day_id)
+        
+        total_activities = len(activities)
+        planned_count = len([a for a in activities if a.status == ActivityStatus.PLANNED.value])
+        in_progress_count = len([a for a in activities if a.status == ActivityStatus.IN_PROGRESS.value])
+        completed_count = len([a for a in activities if a.status == ActivityStatus.COMPLETED.value])
+        cancelled_count = len([a for a in activities if a.status == ActivityStatus.CANCELLED.value])
+        
+        # Calcular costos
+        estimated_cost = sum(a.estimated_cost or 0 for a in activities)
+        actual_cost = sum(a.actual_cost or 0 for a in activities if a.actual_cost is not None)
+        
+        # Progreso del día (actividades completadas / total)
+        progress_percentage = (completed_count / total_activities * 100) if total_activities > 0 else 0
+        
+        return {
+            "total_activities": total_activities,
+            "planned": planned_count,
+            "in_progress": in_progress_count,
+            "completed": completed_count,
+            "cancelled": cancelled_count,
+            "estimated_cost": estimated_cost,
+            "actual_cost": actual_cost,
+            "progress_percentage": round(progress_percentage, 2)
+        }
+    
+    # También agregar el permiso "view_activities" en _validate_user_permissions
+    async def _validate_user_permissions(
+        self,
+        trip_id: str,
+        user_id: str,
+        action: str
+    ) -> str:
+        """Validar permisos del usuario en el viaje"""
+        member = await self._trip_member_repository.find_by_trip_and_user(trip_id, user_id)
+        if not member:
+            raise ForbiddenError("No eres miembro de este viaje")
+    
+        # Definir qué roles pueden realizar qué acciones
+        if action in ["create_activity", "edit_activity", "delete_activity"]:
+            if not member.can_edit_trip():
+                raise ForbiddenError("No tienes permisos para gestionar actividades")
+        elif action in ["change_activity_status", "view_activities"]:
+            # Los miembros regulares pueden cambiar estados y ver actividades
+            if not member.is_active():
+                raise ForbiddenError("No tienes acceso activo a este viaje")
+    
+        return trip_id
+    
