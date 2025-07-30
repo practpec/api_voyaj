@@ -21,78 +21,84 @@ from ...application.use_cases.delete_activity import DeleteActivityUseCase
 router = APIRouter()
 
 def get_activity_controller():
-    activity_repo = RepositoryFactory.get_activity_repository()
-    trip_member_repo = RepositoryFactory.get_trip_member_repository()
-    user_repo = RepositoryFactory.get_user_repository()
-    day_repo = RepositoryFactory.get_day_repository()
-    event_bus = EventBus.get_instance()
-    
-    # Línea corregida - faltaba el punto al final
-    activity_service = ServiceFactory.get_activity_service()
-    
-    create_activity_use_case = CreateActivityUseCase(
-        activity_repository=activity_repo,
-        trip_member_repository=trip_member_repo,
-        user_repository=user_repo,
-        day_repository=day_repo,
-        activity_service=activity_service,
-        event_bus=event_bus
-    )
-    
-    get_activity_use_case = GetActivityUseCase(
-        activity_repository=activity_repo,
-        day_repository=day_repo,
-        trip_member_repository=trip_member_repo,
-        activity_service=activity_service
-    )
-    
-    get_day_activities_use_case = GetDayActivitiesUseCase(
-        activity_repository=activity_repo,
-        day_repository=day_repo,
-        trip_member_repository=trip_member_repo,
-        activity_service=activity_service
-    )
-    
-    update_activity_use_case = UpdateActivityUseCase(
-        activity_repository=activity_repo,
-        trip_member_repository=trip_member_repo,
-        user_repository=user_repo,
-        activity_service=activity_service,
-        event_bus=event_bus
-    )
-    
-    change_activity_status_use_case = ChangeActivityStatusUseCase(
-        activity_repository=activity_repo,
-        trip_member_repository=trip_member_repo,
-        user_repository=user_repo,
-        activity_service=activity_service,
-        event_bus=event_bus
-    )
-    
-    reorder_activities_use_case = ReorderActivitiesUseCase(
-        activity_repository=activity_repo,
-        day_repository=day_repo,
-        trip_member_repository=trip_member_repo,
-        activity_service=activity_service,
-        event_bus=event_bus
-    )
-    
-    delete_activity_use_case = DeleteActivityUseCase(
-        activity_repository=activity_repo,
-        trip_member_repository=trip_member_repo,
-        activity_service=activity_service,
-        event_bus=event_bus
-    )
-    
-    return ActivityController(
-        create_activity_use_case=create_activity_use_case,
-        get_activity_use_case=get_activity_use_case,
-        get_day_activities_use_case=get_day_activities_use_case,
-        update_activity_use_case=update_activity_use_case,
-        change_activity_status_use_case=change_activity_status_use_case,
-        reorder_activities_use_case=reorder_activities_use_case,
-        delete_activity_use_case=delete_activity_use_case
-    )
+    """Factory para crear controlador de actividades con dependencias"""
+    try:
+        activity_repo = RepositoryFactory.get_activity_repository()
+        trip_member_repo = RepositoryFactory.get_trip_member_repository()
+        user_repo = RepositoryFactory.get_user_repository()
+        day_repo = RepositoryFactory.get_day_repository()
+        event_bus = EventBus.get_instance()
+        
+        # Obtener servicio de actividades
+        activity_service = ServiceFactory.get_activity_service()
+        
+        create_activity_use_case = CreateActivityUseCase(
+            activity_repository=activity_repo,
+            trip_member_repository=trip_member_repo,
+            user_repository=user_repo,
+            day_repository=day_repo,
+            activity_service=activity_service,
+            event_bus=event_bus
+        )
+        
+        get_activity_use_case = GetActivityUseCase(
+            activity_repository=activity_repo,
+            day_repository=day_repo,
+            trip_member_repository=trip_member_repo,
+            activity_service=activity_service
+        )
+        
+        get_day_activities_use_case = GetDayActivitiesUseCase(
+            activity_repository=activity_repo,
+            day_repository=day_repo,
+            trip_member_repository=trip_member_repo,
+            activity_service=activity_service
+        )
+        
+        update_activity_use_case = UpdateActivityUseCase(
+            activity_repository=activity_repo,
+            trip_member_repository=trip_member_repo,
+            user_repository=user_repo,
+            activity_service=activity_service,
+            event_bus=event_bus
+        )
+        
+        change_activity_status_use_case = ChangeActivityStatusUseCase(
+            activity_repository=activity_repo,
+            trip_member_repository=trip_member_repo,
+            user_repository=user_repo,
+            activity_service=activity_service,
+            event_bus=event_bus
+        )
+        
+        reorder_activities_use_case = ReorderActivitiesUseCase(
+            activity_repository=activity_repo,
+            day_repository=day_repo,
+            trip_member_repository=trip_member_repo,
+            activity_service=activity_service,
+            event_bus=event_bus
+        )
+        
+        delete_activity_use_case = DeleteActivityUseCase(
+            activity_repository=activity_repo,
+            trip_member_repository=trip_member_repo,
+            activity_service=activity_service,
+            event_bus=event_bus
+        )
+        
+        return ActivityController(
+            create_activity_use_case=create_activity_use_case,
+            get_activity_use_case=get_activity_use_case,
+            get_day_activities_use_case=get_day_activities_use_case,
+            update_activity_use_case=update_activity_use_case,
+            change_activity_status_use_case=change_activity_status_use_case,
+            reorder_activities_use_case=reorder_activities_use_case,
+            delete_activity_use_case=delete_activity_use_case
+        )
+        
+    except Exception as e:
+        print(f"[ERROR] Error creando activity controller: {str(e)}")
+        raise Exception(f"Error inicializando controlador de actividades: {str(e)}")
 
 # Rutas de actividades
 @router.post("/")
@@ -101,6 +107,7 @@ async def create_activity(
     current_user: dict = Depends(get_current_user),
     controller: ActivityController = Depends(get_activity_controller)
 ):
+    """Crear nueva actividad"""
     return await controller.create_activity(dto, current_user)
 
 @router.get("/{activity_id}")
@@ -109,6 +116,7 @@ async def get_activity(
     current_user: dict = Depends(get_current_user),
     controller: ActivityController = Depends(get_activity_controller)
 ):
+    """Obtener actividad específica"""
     return await controller.get_activity(activity_id, current_user)
 
 @router.put("/{activity_id}")
@@ -118,6 +126,7 @@ async def update_activity(
     current_user: dict = Depends(get_current_user),
     controller: ActivityController = Depends(get_activity_controller)
 ):
+    """Actualizar actividad"""
     return await controller.update_activity(activity_id, dto, current_user)
 
 @router.delete("/{activity_id}")
@@ -126,6 +135,7 @@ async def delete_activity(
     current_user: dict = Depends(get_current_user),
     controller: ActivityController = Depends(get_activity_controller)
 ):
+    """Eliminar actividad"""
     return await controller.delete_activity(activity_id, current_user)
 
 @router.put("/{activity_id}/status")
@@ -135,6 +145,7 @@ async def change_activity_status(
     current_user: dict = Depends(get_current_user),
     controller: ActivityController = Depends(get_activity_controller)
 ):
+    """Cambiar estado de actividad"""
     return await controller.change_activity_status(activity_id, dto, current_user)
 
 @router.get("/day/{day_id}")
@@ -144,6 +155,7 @@ async def get_day_activities(
     current_user: dict = Depends(get_current_user),
     controller: ActivityController = Depends(get_activity_controller)
 ):
+    """Obtener actividades de un día"""
     return await controller.get_day_activities(day_id, current_user, include_stats)
 
 @router.put("/day/{day_id}/reorder")
@@ -153,4 +165,5 @@ async def reorder_activities(
     current_user: dict = Depends(get_current_user),
     controller: ActivityController = Depends(get_activity_controller)
 ):
+    """Reordenar actividades de un día"""
     return await controller.reorder_activities(day_id, dto, current_user)
