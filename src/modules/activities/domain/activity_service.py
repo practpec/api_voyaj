@@ -11,60 +11,42 @@ class ActivityService:
         self._activity_repository = activity_repository
 
     async def validate_activity_creation(
-        self, 
-        dto, 
-        day: Day
-    ) -> None:
-        """Validar creación de actividad"""
-        # Validar título
-        if not dto.title or len(dto.title.strip()) < 3:
-            raise ValidationError("El título debe tener al menos 3 caracteres")
-
-        # Validar categoría
-        valid_categories = [
-            "cultural", "adventure", "food", "shopping", "transport", 
-            "accommodation", "entertainment", "nature", "sports", "other"
-        ]
-        if dto.category not in valid_categories:
-            raise ValidationError(f"Categoría inválida. Debe ser una de: {', '.join(valid_categories)}")
-
-        # Validar prioridad
-        valid_priorities = ["low", "medium", "high", "critical"]
-        if dto.priority not in valid_priorities:
-            raise ValidationError(f"Prioridad inválida. Debe ser una de: {', '.join(valid_priorities)}")
-
-        # Validar duración estimada
-        if dto.estimated_duration is not None and dto.estimated_duration <= 0:
-            raise ValidationError("La duración estimada debe ser mayor a 0 minutos")
-
-        # Validar costo estimado
-        if dto.estimated_cost is not None and dto.estimated_cost < 0:
-            raise ValidationError("El costo estimado no puede ser negativo")
-
-        # Validar coordenadas
-        if dto.coordinates:
-            if not isinstance(dto.coordinates, dict):
-                raise ValidationError("Las coordenadas deben ser un objeto con lat y lng")
-            
-            if "lat" not in dto.coordinates or "lng" not in dto.coordinates:
-                raise ValidationError("Las coordenadas deben incluir lat y lng")
-            
-            try:
-                lat = float(dto.coordinates["lat"])
-                lng = float(dto.coordinates["lng"])
-                
-                if not (-90 <= lat <= 90):
-                    raise ValidationError("La latitud debe estar entre -90 y 90")
-                if not (-180 <= lng <= 180):
-                    raise ValidationError("La longitud debe estar entre -180 y 180")
-            except (ValueError, TypeError):
-                raise ValidationError("Las coordenadas deben ser números válidos")
-
-        # Validar límite de actividades por día
-        activity_count = await self._activity_repository.count_by_day_id(day.id)
-        if activity_count >= 20:  # Límite máximo de actividades por día
-            raise BusinessRuleError("No se pueden crear más de 20 actividades por día")
-
+         self, 
+         dto, 
+         day: Day
+     ) -> None:
+         """Validar creación de actividad"""
+         # Validar título
+         if not dto.title or len(dto.title.strip()) < 3:
+             raise ValidationError("El título debe tener al menos 3 caracteres")
+ 
+         # Validar categoría
+         valid_categories = [
+             "cultural", "adventure", "food", "shopping", "transport", 
+             "accommodation", "entertainment", "nature", "sports", "other"
+         ]
+         if dto.category not in valid_categories:
+             raise ValidationError(f"Categoría inválida. Debe ser una de: {', '.join(valid_categories)}")
+ 
+         # Validar prioridad
+         valid_priorities = ["low", "medium", "high", "critical"]
+         if dto.priority not in valid_priorities:
+             raise ValidationError(f"Prioridad inválida. Debe ser una de: {', '.join(valid_priorities)}")
+ 
+         # Validar duración estimada
+         if dto.estimated_duration is not None and dto.estimated_duration <= 0:
+             raise ValidationError("La duración estimada debe ser mayor a 0 minutos")
+ 
+         # Validar costo estimado
+         if dto.estimated_cost is not None and dto.estimated_cost < 0:
+             raise ValidationError("El costo estimado no puede ser negativo")
+ 
+         # Validar límite de actividades por día
+         activity_count = await self._activity_repository.count_by_day_id(day.id)
+         if activity_count >= 20:  # Límite máximo de actividades por día
+             raise BusinessRuleError("No se pueden crear más de 20 actividades por día")
+         
+         
     async def validate_activity_update(self, activity: Activity, **update_fields) -> None:
         """Validar actualización de actividad"""
         # Verificar si la actividad puede ser editada

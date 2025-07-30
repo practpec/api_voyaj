@@ -30,15 +30,28 @@ class CreateActivityUseCase:
 
     async def execute(self, dto: CreateActivityDTO, user_id: str) -> ActivityResponseDTO:
         """Crear nueva actividad"""
+        print(f"[DEBUG] CreateActivity - user_id: {user_id}")
+        print(f"[DEBUG] CreateActivity - day_id: {dto.day_id}")
+        
         # Verificar que el día existe
         day = await self._day_repository.find_by_id(dto.day_id)
         if not day:
             raise NotFoundError("Día no encontrado")
 
+        print(f"[DEBUG] CreateActivity - day found, trip_id: {day.trip_id}")
+
         # Verificar permisos en el viaje
         trip_member = await self._trip_member_repository.find_by_trip_and_user(
             day.trip_id, user_id
         )
+        
+        print(f"[DEBUG] CreateActivity - trip_member found: {trip_member is not None}")
+        if trip_member:
+            print(f"[DEBUG] CreateActivity - trip_member.role: {trip_member.role}")
+            print(f"[DEBUG] CreateActivity - trip_member.status: {trip_member.status}")
+            print(f"[DEBUG] CreateActivity - trip_member.is_active(): {trip_member.is_active()}")
+            print(f"[DEBUG] CreateActivity - trip_member.can_create_activities(): {trip_member.can_create_activities()}")
+        
         if not trip_member or not trip_member.can_create_activities():
             raise ForbiddenError("No tienes permisos para crear actividades en este viaje")
 

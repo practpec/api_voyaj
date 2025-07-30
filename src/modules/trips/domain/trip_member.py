@@ -191,6 +191,18 @@ class TripMember:
         """Verificar si puede invitar miembros"""
         return self._role in [TripMemberRole.OWNER.value, TripMemberRole.ADMIN.value]
 
+    def can_create_activities(self) -> bool:
+        """Verificar si puede crear actividades"""
+        return self._role in [TripMemberRole.OWNER.value, TripMemberRole.ADMIN.value, TripMemberRole.MEMBER.value]
+
+    def can_edit_activities(self) -> bool:
+        """Verificar si puede editar actividades"""
+        return self._role in [TripMemberRole.OWNER.value, TripMemberRole.ADMIN.value, TripMemberRole.MEMBER.value]
+
+    def can_delete_activities(self) -> bool:
+        """Verificar si puede eliminar actividades"""
+        return self._role in [TripMemberRole.OWNER.value, TripMemberRole.ADMIN.value]
+
     def to_public_data(self) -> TripMemberData:
         """Convertir a datos públicos"""
         return TripMemberData(

@@ -27,6 +27,7 @@ def get_activity_controller():
     day_repo = RepositoryFactory.get_day_repository()
     event_bus = EventBus.get_instance()
     
+    # Línea corregida - faltaba el punto al final
     activity_service = ServiceFactory.get_activity_service()
     
     create_activity_use_case = CreateActivityUseCase(

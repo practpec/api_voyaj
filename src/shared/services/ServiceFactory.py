@@ -82,15 +82,8 @@ class ServiceFactory:
             from modules.activities.domain.activity_service import ActivityService
             
             activity_repo = RepositoryFactory.get_activity_repository()
-            day_repo = RepositoryFactory.get_day_repository()
-            trip_repo = RepositoryFactory.get_trip_repository()
-            trip_member_repo = RepositoryFactory.get_trip_member_repository()
-            
             cls._instances['activity'] = ActivityService(
-                activity_repository=activity_repo,
-                day_repository=day_repo,
-                trip_repository=trip_repo,
-                trip_member_repository=trip_member_repo
+                activity_repository=activity_repo
             )
         return cls._instances['activity']
     
